@@ -33,6 +33,7 @@ public class WaiterAgent extends Agent {
 	public CustomerAgent cmr;
 	public String choice;
 	public int tableNum;
+	public Double bill;
 	public Food food; //gui thing
 
 	/** Constructor for MyCustomer class.
@@ -41,6 +42,7 @@ public class WaiterAgent extends Agent {
 	public MyCustomer(CustomerAgent cmr, int num){
 	    this.cmr = cmr;
 	    tableNum = num;
+	    this.bill = 0.0;
 	    state = CustomerState.NO_ACTION;
 	}
     }
@@ -53,6 +55,7 @@ public class WaiterAgent extends Agent {
 
     private HostAgent host;
     private CookAgent cook;
+    private CashierAgent cashier;
 
     //Animation Variables
     AStarTraversal aStar;
@@ -71,7 +74,6 @@ public class WaiterAgent extends Agent {
 	super();
 
 	this.name = name;
-
 	//initialize all the animation objects
 	this.aStar = aStar;
 	this.restaurant = restaurant;//the layout for astar
@@ -129,7 +131,8 @@ public class WaiterAgent extends Agent {
      * @param f is the guiFood object */
     public void msgOrderIsReady(int tableNum, Food f){
 	for(MyCustomer c:customers){
-	    if(c.tableNum == tableNum){
+	    print("Order Ready");
+		if(c.tableNum == tableNum){
 		c.state = CustomerState.ORDER_READY;
 		c.food = f; //so that later we can remove it from the table.
 		stateChanged();
@@ -158,6 +161,17 @@ public class WaiterAgent extends Agent {
 	onBreak = state;
 	stateChanged();
     }
+    
+    public void msgHereIsBill(CustomerAgent customer, Double bill) {
+    	print("Getting Bill From Cashier");
+    	for (MyCustomer c : customers) {
+    		if (c.cmr.equals(customer)) {
+    			c.bill = bill;
+    			stateChanged();
+    			return;
+    		}
+    	}
+    }
 
 
 
@@ -172,14 +186,16 @@ public class WaiterAgent extends Agent {
 	    //Gives food to customer if the order is ready
 	    for(MyCustomer c:customers){
 		if(c.state == CustomerState.ORDER_READY) {
-		    giveFoodToCustomer(c);
+			makeBill(c);
+			giveFoodToCustomer(c);
 		    return true;
 		}
 	    }
 	    //Clears the table if the customer has left
 	    for(MyCustomer c:customers){
-		if(c.state == CustomerState.IS_DONE) {
+		if(c.state == CustomerState.IS_DONE && c.bill != 0) {
 		    clearTable(c);
+		    sendBillToCustomer(c);
 		    return true;
 		}
 	    }
@@ -277,6 +293,14 @@ public class WaiterAgent extends Agent {
 	DoClearingTable(customer);
 	customer.state = CustomerState.NO_ACTION;
 	stateChanged();
+    }
+    
+    private void makeBill(MyCustomer c) {
+    	cashier.msgMakeBill(this, c.cmr, c.choice);
+    }
+    
+    private void sendBillToCustomer(MyCustomer customer) {
+    	customer.cmr.msgHereIsMyBill(customer.bill);
     }
 
     // Animation Actions
@@ -437,6 +461,10 @@ public class WaiterAgent extends Agent {
     /** @return true if the waiter is on break, false otherwise */
     public boolean isOnBreak(){
 	return onBreak;
+    }
+    
+    public void setCashier(CashierAgent cashier) {
+    	this.cashier = cashier;
     }
 
 }

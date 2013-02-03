@@ -33,6 +33,7 @@ public class RestaurantPanel extends JPanel {
     //Host, cook, waiters and customers
     private HostAgent host = new HostAgent("Prof. W.", nTables);
     private CookAgent cook = new CookAgent("W. Puck", restaurant);
+    private CashierAgent cashier = new CashierAgent("Frank");
     private Vector<CustomerAgent> customers = new Vector<CustomerAgent>();
     private Vector<WaiterAgent> waiters = new Vector<WaiterAgent>();
 
@@ -98,6 +99,7 @@ public class RestaurantPanel extends JPanel {
 
 	host.startThread();
 	cook.startThread();
+	cashier.startThread();
 
 	setLayout(new GridLayout(1,2, 20,20));
 	group.setLayout(new GridLayout(1,2, 10,10));
@@ -156,6 +158,7 @@ public class RestaurantPanel extends JPanel {
 	if(type.equals("Customers")){
 	    CustomerAgent c = new CustomerAgent(name, gui, restaurant);
 	    c.setHost(host);
+	    c.setCashier(cashier);
 	    customers.add(c);
 	    c.startThread(); //Customer is fsm.
 	    c.setHungry();
@@ -164,6 +167,7 @@ public class RestaurantPanel extends JPanel {
 	    WaiterAgent w = new WaiterAgent(name, aStarTraversal, restaurant, tables);
 	    w.setHost(host);
 	    w.setCook(cook);
+	    w.setCashier(cashier);
 	    host.setWaiter(w);
 	    waiters.add(w);
 	    w.startThread();

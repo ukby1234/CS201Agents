@@ -19,18 +19,22 @@ public class CustomerAgent extends Agent {
     // ** Agent connections **
     private HostAgent host;
     private WaiterAgent waiter;
+    private CashierAgent cashier;
     Restaurant restaurant;
     private Menu menu;
+    private Double money;
+    private Double change;
+    private Double bill;
     Timer timer = new Timer();
     GuiCustomer guiCustomer; //for gui
    // ** Agent state **
     private boolean isHungry = false; //hack for gui
     public enum AgentState
-	    {DoingNothing, WaitingInRestaurant, SeatedWithMenu, WaiterCalled, WaitingForFood, Eating};
+	    {DoingNothing, WaitingInRestaurant, SeatedWithMenu, WaiterCalled, WaitingForFood, Eating, Paying, Leaving};
 	//{NO_ACTION,NEED_SEATED,NEED_DECIDE,NEED_ORDER,NEED_EAT,NEED_LEAVE};
     private AgentState state = AgentState.DoingNothing;//The start state
     public enum AgentEvent 
-	    {gotHungry, beingSeated, decidedChoice, waiterToTakeOrder, foodDelivered, doneEating};
+	    {gotHungry, beingSeated, decidedChoice, waiterToTakeOrder, foodDelivered, doneEating, gotBill, gotChange};
     List<AgentEvent> events = new ArrayList<AgentEvent>();
     
     /** Constructor for CustomerAgent class 
@@ -42,6 +46,9 @@ public class CustomerAgent extends Agent {
 	this.gui = gui;
 	this.name = name;
 	this.restaurant = restaurant;
+	this.money = Math.random() * 100;
+	this.change = 0.0;
+	this.bill = 0.0;
 	guiCustomer = new GuiCustomer(name.substring(0,2), new Color(0,255,0), restaurant);
     }
     public CustomerAgent(String name, Restaurant restaurant) {
@@ -49,6 +56,9 @@ public class CustomerAgent extends Agent {
 	this.gui = null;
 	this.name = name;
 	this.restaurant = restaurant;
+	this.money = Math.random() * 100;
+	this.change = 0.0;
+	this.bill = 0.0;
 	guiCustomer = new GuiCustomer(name.substring(0,1), new Color(0,255,0), restaurant);
     }
     // *** MESSAGES ***
@@ -92,6 +102,18 @@ public class CustomerAgent extends Agent {
 	stateChanged(); 
     }
 
+    public void msgHereIsMyBill(Double bill) {
+    	print("Getting Bill From Waiter");
+    	events.add(AgentEvent.gotBill);
+    	this.bill = bill;
+    	stateChanged();
+    }
+    public void msgHereIsChange(Double change) {
+    	print("Getting Change From Cashier");
+    	events.add(AgentEvent.gotChange);
+    	this.change = change;
+    	stateChanged();
+    }
 
     /** Scheduler.  Determine what action is called for, and do it. */
     protected boolean pickAndExecuteAnAction() {
@@ -138,9 +160,21 @@ public class CustomerAgent extends Agent {
 	if (state == AgentState.Eating) {
 	    if (event == AgentEvent.doneEating)	{
 		leaveRestaurant();
-		state = AgentState.DoingNothing;
+		state = AgentState.Paying;
 		return true;
 	    }
+	}
+	if (state == AgentState.Paying) {
+		if (event == AgentEvent.gotBill) {
+			payForBill();
+			state = AgentState.Paying;
+			return true;
+		}
+		if (event == AgentEvent.gotChange) {
+			gotChange();
+			state = AgentState.DoingNothing;
+			return true;
+		}
 	}
 
 	print("No scheduler rule fired, should not happen in FSM, event="+event+" state="+state);
@@ -175,7 +209,8 @@ public class CustomerAgent extends Agent {
 
     /** Picks a random choice from the menu and sends it to the waiter */
     private void orderFood(){
-	String choice = menu.choices[(int)(Math.random()*4)];
+	Object choices[] = menu.choices.keySet().toArray();
+    String choice = (String)choices[(int)(Math.random() * choices.length)];
 	print("Ordering the " + choice);
 	waiter.msgHereIsMyChoice(this, choice);
 	stateChanged();
@@ -214,6 +249,18 @@ public class CustomerAgent extends Agent {
 		setHungry();		    
 	    }},
 	    15000);//how long to wait before running task
+    }
+    
+    private void payForBill() {
+    	print(String.format("Paying %.2f", money));
+    	cashier.msgHereIsPayment(this, money);
+    	stateChanged();
+    }
+    
+    private void gotChange() {
+    	print(String.format("Got Change: %.2f", this.change));
+    	money = change;
+    	stateChanged();
     }
 
     // *** EXTRA ***
@@ -254,6 +301,10 @@ public class CustomerAgent extends Agent {
     /** @return the string representation of the class */
     public String toString() {
 	return "customer " + getName();
+    }
+    
+    public void setCashier(CashierAgent cashier) {
+    	this.cashier = cashier;
     }
 
     
