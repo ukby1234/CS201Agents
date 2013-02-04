@@ -5,6 +5,7 @@ import java.util.*;
 public class CashierAgent extends Agent {
 	enum BillStatus {Ready, Pending, Received, Cleared};
 	List<MyCustomer> customers = new ArrayList<MyCustomer>();
+	List<MyMarket> markets = new ArrayList<MyMarket>();
 	Menu menu;
 	WaiterAgent waiter;
 	String name;
@@ -39,6 +40,12 @@ public class CashierAgent extends Agent {
 		}
 		stateChanged();
 	}
+	
+	void msgHereIsBill(MarketAgent mka, Double amount) {
+		print(String.format("Paying to %s %.2f", mka.getName(), amount));
+		markets.add(new MyMarket(mka, BillStatus.Ready, amount));
+		stateChanged();
+	}
 	@Override
 	protected boolean pickAndExecuteAnAction() {
 		for (MyCustomer c : customers) {
@@ -48,6 +55,12 @@ public class CashierAgent extends Agent {
 			}
 			if (c.bill.status == BillStatus.Received) {
 				makeChange(c);
+				return true;
+			}
+		}
+		for (MyMarket m : markets) {
+			if (m.status == BillStatus.Ready) {
+				payToMarket(m);
 				return true;
 			}
 		}
@@ -71,6 +84,12 @@ public class CashierAgent extends Agent {
 		c.bill.status = BillStatus.Cleared;
 		stateChanged();
 	}
+	
+	private void payToMarket(MyMarket m) {
+		m.market.msgHereIsPayment(m.bill);
+		m.status = BillStatus.Cleared;
+		stateChanged();
+	}
 	private class MyCustomer {
 		CustomerAgent customer;
 		WaiterAgent waiter;
@@ -90,6 +109,17 @@ public class CashierAgent extends Agent {
 		public Bill(Double price, BillStatus status) {
 			this.price = price;
 			this.status = status;
+		}
+	}
+	
+	private class MyMarket {
+		MarketAgent market;
+		BillStatus status;
+		Double bill;
+		public MyMarket(MarketAgent market, BillStatus status, Double bill) {
+			this.market = market;
+			this.status = status;
+			this.bill = bill;
 		}
 	}
 	

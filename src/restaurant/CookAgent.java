@@ -18,6 +18,11 @@ public class CookAgent extends Agent {
     //List of all the orders
     private List<Order> orders = new ArrayList<Order>();
     private Map<String,FoodData> inventory = new HashMap<String,FoodData>();
+    private List<InventoryOrder> invords = new ArrayList<InventoryOrder>();
+    private List<MarketAgent> agents = new ArrayList<MarketAgent>();
+    private final int surplus = 10;
+    private int marketPos = 0;
+    public enum InventoryStatus {Pending, Ordered, Received, Done};
     public enum Status {pending, cooking, done}; // order status
 
     //Name of the cook
@@ -36,10 +41,10 @@ public class CookAgent extends Agent {
 	this.name = name;
 	this.restaurant = restaurant;
 	//Create the restaurant's inventory.
-	inventory.put("Steak",new FoodData("Steak", 5));
-	inventory.put("Chicken",new FoodData("Chicken", 4));
-	inventory.put("Pizza",new FoodData("Pizza", 3));
-	inventory.put("Salad",new FoodData("Salad", 2));
+	inventory.put("Steak",new FoodData("Steak", 5, 5, 5));
+	inventory.put("Chicken",new FoodData("Chicken", 4, 5, 5));
+	inventory.put("Pizza",new FoodData("Pizza", 3, 5, 5));
+	inventory.put("Salad",new FoodData("Salad", 2, 5, 5));
     }
     /** Private class to store information about food.
      *  Contains the food type, its cooking time, and ...
@@ -47,11 +52,15 @@ public class CookAgent extends Agent {
     private class FoodData {
 	String type; //kind of food
 	double cookTime;
+	int amount;
+	int limit;
 	// other things ...
 	
-	public FoodData(String type, double cookTime){
+	public FoodData(String type, double cookTime, int amount, int limit){
 	    this.type = type;
 	    this.cookTime = cookTime;
+	    this.amount = amount;
+	    this.limit = limit;
 	}
     }
     /** Private class to store order information.
@@ -76,13 +85,26 @@ public class CookAgent extends Agent {
 	    this.tableNum = tableNum;
 	    this.status = Status.pending;
 	}
+	
 
 	/** Represents the object as a string */
 	public String toString(){
 	    return choice + " for " + waiter ;
 	}
     }
-
+    
+    private class InventoryOrder {
+		String type;
+		MarketAgent market;
+		InventoryStatus status;
+		int amount;
+		public InventoryOrder(String type, MarketAgent market, InventoryStatus status, int amount) {
+			this.type = type;
+			this.market = market;
+			this.status = status;
+			this.amount = amount;
+		}
+	}
 
     
 
@@ -98,12 +120,49 @@ public class CookAgent extends Agent {
 	orders.add(new Order(waiter, tableNum, choice));
 	stateChanged();
     }
+    
+    public void msgDelivery(String type, int amount) {
+    	if (amount == 0)
+    		print(type + " deliver fails");
+    	else
+    		print(String.format("%s delivers %d", type, amount));
+    	for (InventoryOrder o : invords) {
+    		if (o.type.equals(type) && o.status == InventoryStatus.Ordered) {
+    			o.status = InventoryStatus.Received;
+    			o.amount = amount;
+    		}
+    	}
+    	stateChanged();
+    }
 
 
     /** Scheduler.  Determine what action is called for, and do it. */
     protected boolean pickAndExecuteAnAction() {
 	
-	//If there exists an order o whose status is done, place o.
+	for (String type : inventory.keySet()) {
+		FoodData fd = inventory.get(type);
+		boolean flag = true;
+		for (InventoryOrder o : invords) {
+			if (o.type.equals(fd.type) && o.status != InventoryStatus.Done)
+				flag = false;
+			
+		}
+		if (fd.amount < fd.limit && flag) {
+			orderMore(fd);
+			return true;
+		}
+	}
+	for (InventoryOrder o : invords) {
+		if (o.status == InventoryStatus.Pending) {
+			requestMarket(o);
+			return true;
+		}
+		if (o.status == InventoryStatus.Received) {
+			addToInventory(o);
+			return true;
+		}
+	}
+    //If there exists an order o whose status is done, place o.
 	for(Order o:orders){
 	    if(o.status == Status.done){
 		placeOrder(o);
@@ -131,7 +190,8 @@ public class CookAgent extends Agent {
      * @param order
      */
     private void cookOrder(Order order){
-	DoCooking(order);
+	inventory.get(order.choice).amount--;
+    DoCooking(order);
 	order.status = Status.cooking;
     }
 
@@ -141,6 +201,31 @@ public class CookAgent extends Agent {
 	orders.remove(order);
     }
 
+    private void orderMore(FoodData fd) {
+    	print("called");
+    	invords.add(new InventoryOrder(fd.type, agents.get(marketPos), InventoryStatus.Pending, fd.limit - fd.amount + surplus));
+    	stateChanged();
+    }
+    
+    private void requestMarket(InventoryOrder o) {
+    	//print("called");
+    	o.status = InventoryStatus.Ordered;
+    	o.market.msgOrder(this, o.type, o.amount);
+    	stateChanged();
+    }
+    
+    private void addToInventory(InventoryOrder o) {
+    	if (o.amount == 0) {
+    		o.status = InventoryStatus.Done;
+    		marketPos = (marketPos + 1) % agents.size();
+    	}
+    	else {
+    		inventory.get(o.type).amount += o.amount;
+    		print(String.format("%s is now %d", o.type, inventory.get(o.type).amount));
+    		o.status = InventoryStatus.Done;
+    	}
+    	stateChanged();
+    }
 
     // *** EXTRA -- all the simulation routines***
 
@@ -148,7 +233,10 @@ public class CookAgent extends Agent {
     public String getName(){
         return name;
     }
-
+    
+    public void addMarket(MarketAgent market) {
+    	agents.add(market);
+    }
     private void DoCooking(final Order order){
 	print("Cooking:" + order + " for table:" + (order.tableNum+1));
 	//put it on the grill. gui stuff

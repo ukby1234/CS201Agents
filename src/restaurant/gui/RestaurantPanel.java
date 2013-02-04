@@ -34,6 +34,8 @@ public class RestaurantPanel extends JPanel {
     private HostAgent host = new HostAgent("Prof. W.", nTables);
     private CookAgent cook = new CookAgent("W. Puck", restaurant);
     private CashierAgent cashier = new CashierAgent("Frank");
+    private MarketAgent market = new MarketAgent("Tao");
+    private MarketAgent market2 = new MarketAgent("Ziv");
     private Vector<CustomerAgent> customers = new Vector<CustomerAgent>();
     private Vector<WaiterAgent> waiters = new Vector<WaiterAgent>();
 
@@ -96,7 +98,21 @@ public class RestaurantPanel extends JPanel {
 	}
 	restaurant.setAnimDelay(500);
 	restaurant.displayRestaurant();
-
+	
+	market.addInventory("Steak", 3, 10.99);
+	market.addInventory("Chicken", 50, 10.99);
+	market.addInventory("Pizza", 50, 10.99);
+	market.addInventory("Salad", 50, 10.99);
+	market2.addInventory("Steak", 50, 10.99);
+	market2.addInventory("Chicken", 50, 10.99);
+	market2.addInventory("Pizza", 50, 10.99);
+	market2.addInventory("Salad", 50, 10.99);
+	market.setCashier(cashier);
+	market2.setCashier(cashier);
+	cook.addMarket(market);
+	cook.addMarket(market2);
+	market2.startThread();
+	market.startThread();
 	host.startThread();
 	cook.startThread();
 	cashier.startThread();
