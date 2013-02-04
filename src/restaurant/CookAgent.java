@@ -191,6 +191,7 @@ public class CookAgent extends Agent {
      */
     private void cookOrder(Order order){
 	inventory.get(order.choice).amount--;
+	print(String.format("Now I have %s %d", order.choice, inventory.get(order.choice).amount));
     DoCooking(order);
 	order.status = Status.cooking;
     }

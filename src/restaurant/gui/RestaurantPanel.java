@@ -100,9 +100,9 @@ public class RestaurantPanel extends JPanel {
 	restaurant.displayRestaurant();
 	
 	market.addInventory("Steak", 3, 10.99);
-	market.addInventory("Chicken", 50, 10.99);
-	market.addInventory("Pizza", 50, 10.99);
-	market.addInventory("Salad", 50, 10.99);
+	market.addInventory("Chicken", 3, 10.99);
+	market.addInventory("Pizza", 3, 10.99);
+	market.addInventory("Salad", 3, 10.99);
 	market2.addInventory("Steak", 50, 10.99);
 	market2.addInventory("Chicken", 50, 10.99);
 	market2.addInventory("Pizza", 50, 10.99);
