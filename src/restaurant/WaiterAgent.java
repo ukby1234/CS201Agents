@@ -16,8 +16,9 @@ import java.util.*;
 public class WaiterAgent extends Agent {
 
    //State variables for Waiter
+    public enum WaiterState {Pending_Break, Pending_Resume, Sent_Break, Sent_Resume, Working, NotWorking};
     private boolean onBreak = false;
-
+    private WaiterState state; 
     //State constants for Customers
 
     public enum CustomerState 
@@ -152,13 +153,30 @@ public class WaiterAgent extends Agent {
 	    }
 	}
     }
+    
+    public void msgDecisionOnBreak(boolean working) {
+    	if (working) {
+    		print("Host allow me on break");
+    		state = WaiterState.NotWorking;
+    	}
+    	else {
+    		print("Host doesn't allow me on break");
+    		state = WaiterState.NotWorking;
+    	}
+    	onBreak = working;
+    	stateChanged();
+    }
 
     /** Sent from GUI to control breaks 
      * @param state true when the waiter should go on break and 
      *              false when the waiter should go off break
      *              Is the name onBreak right? What should it be?*/
     public void setBreakStatus(boolean state){
-	onBreak = state;
+	print("" + state);
+    if (state)
+    	this.state = WaiterState.Pending_Break;
+    else
+    	this.state = WaiterState.Pending_Resume;
 	stateChanged();
     }
     
@@ -181,6 +199,18 @@ public class WaiterAgent extends Agent {
 
 	//Runs through the customers for each rule, so 
 	//the waiter doesn't serve only one customer at a time
+    if (state == WaiterState.Pending_Break) {
+    	print("Asking the host");
+    	host.msgCanIOnBreak(this);
+    }
+    
+    if(customers.isEmpty() && state == WaiterState.NotWorking) {
+    	print("I'm on break now");
+    }
+    
+    if (state == WaiterState.Pending_Resume) {
+    	host.msgResumeWork(this);
+    }
 	if(!customers.isEmpty()){
 	    //System.out.println("in scheduler, customers not empty:");
 	    //Gives food to customer if the order is ready
@@ -291,7 +321,8 @@ public class WaiterAgent extends Agent {
      * @param customer customer whose table needs cleared */
     private void clearTable(MyCustomer customer) {
 	DoClearingTable(customer);
-	customer.state = CustomerState.NO_ACTION;
+	customers.remove(customer);
+	//customer.state = CustomerState.NO_ACTION;
 	stateChanged();
     }
     
@@ -460,7 +491,7 @@ public class WaiterAgent extends Agent {
 
     /** @return true if the waiter is on break, false otherwise */
     public boolean isOnBreak(){
-	return onBreak;
+    	return onBreak;
     }
     
     public void setCashier(CashierAgent cashier) {

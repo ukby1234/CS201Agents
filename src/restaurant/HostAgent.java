@@ -31,6 +31,7 @@ public class HostAgent extends Agent {
     private class MyWaiter {
 	public WaiterAgent wtr;
 	public boolean working = true;
+	public boolean pending = false;
 
 	/** Constructor for MyWaiter class
 	 * @param waiter
@@ -84,14 +85,39 @@ public class HostAgent extends Agent {
 	tables[tableNum].occupied = false;
 	stateChanged();
     }
+    
+    public void msgCanIOnBreak(WaiterAgent w) {
+    	print(String.format("%s asking for break", w.getName()));
+    	for (MyWaiter waiter : waiters) {
+    		if (waiter.wtr.equals(w)) {
+    			print("found");
+    			waiter.pending = true;
+    		}
+    	}
+    	stateChanged();
+    }
+    
+    public void msgResumeWork(WaiterAgent w) {
+    	for (MyWaiter waiter : waiters) {
+    		if (waiter.wtr.equals(w))
+    			waiter.pending = false;
+    			waiter.working = true;
+    	}
+    	stateChanged();
+    }
 
     /** Scheduler.  Determine what action is called for, and do it. */
     protected boolean pickAndExecuteAnAction() {
+    	for (MyWaiter waiter : waiters) {
+			if (waiter.pending) {
+				decideOnBreak(waiter);
+			}
+		}
 	
-	if(!waitList.isEmpty() && !waiters.isEmpty()){
+    if(!waitList.isEmpty() && !waiters.isEmpty()){
 	    synchronized(waiters){
 		//Finds the next waiter that is working
-		while(!waiters.get(nextWaiter).working){
+	    while(!waiters.get(nextWaiter).working){
 		    nextWaiter = (nextWaiter+1)%waiters.size();
 		}
 	    }
@@ -130,6 +156,18 @@ public class HostAgent extends Agent {
 	waitList.remove(customer);
 	nextWaiter = (nextWaiter+1)%waiters.size();
 	stateChanged();
+    }
+    
+    private void decideOnBreak(MyWaiter w) {
+    	print(String.format("%s on break", w.wtr.getName()));
+    	Double res = Math.random();
+    	w.wtr.msgDecisionOnBreak(true);
+    	w.pending = false;
+    	w.working = false;
+    	/*if (res > 0.5)
+    		w.wtr.msgDecisionOnBreak(true);
+    	else
+    		w.wtr.msgDecisionOnBreak(false);*/
     }
 	
     
