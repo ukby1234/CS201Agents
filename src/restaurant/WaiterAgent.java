@@ -161,7 +161,7 @@ public class WaiterAgent extends Agent {
     	}
     	else {
     		print("Host doesn't allow me on break");
-    		state = WaiterState.NotWorking;
+    		state = WaiterState.Working;
     	}
     	onBreak = working;
     	stateChanged();

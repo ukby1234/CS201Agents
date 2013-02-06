@@ -161,13 +161,16 @@ public class HostAgent extends Agent {
     private void decideOnBreak(MyWaiter w) {
     	print(String.format("%s on break", w.wtr.getName()));
     	Double res = Math.random();
-    	w.wtr.msgDecisionOnBreak(true);
+    	//w.wtr.msgDecisionOnBreak(true);
     	w.pending = false;
-    	w.working = false;
-    	/*if (res > 0.5)
+    	if (res > 0.5) {
+    		w.working = false;
     		w.wtr.msgDecisionOnBreak(true);
-    	else
-    		w.wtr.msgDecisionOnBreak(false);*/
+    	}
+    	else {
+    		w.wtr.msgDecisionOnBreak(false);
+    		w.working = true;
+    	}
     }
 	
     
