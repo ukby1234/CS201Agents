@@ -181,6 +181,7 @@ public class RestaurantPanel extends JPanel {
 	} else if(type.equals("Waiters")){
 	    AStarTraversal aStarTraversal = new AStarTraversal(grid);
 	    WaiterAgent w = new WaiterAgent(name, aStarTraversal, restaurant, tables);
+	    w.setGuiPanel(gui);
 	    w.setHost(host);
 	    w.setCook(cook);
 	    w.setCashier(cashier);

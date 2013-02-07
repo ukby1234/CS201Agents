@@ -40,10 +40,21 @@ public class HostAgent extends Agent {
 	    wtr = waiter;
 	}
     }
+    
+    private class MyCustomer {
+    	public CustomerAgent customer;
+    	public CustomerState state;
+    	public MyCustomer(CustomerAgent wtr, CustomerState state) {
+    		customer = wtr;
+    		this.state = state;
+    	}
+    }
+    
+    public enum CustomerState {Pending, Deciding, Waiting};
 
     //List of all the customers that need a table
-    private List<CustomerAgent> waitList =
-		Collections.synchronizedList(new ArrayList<CustomerAgent>());
+    private List<MyCustomer> waitList =
+		Collections.synchronizedList(new ArrayList<MyCustomer>());
 
     //List of all waiter that exist.
     private List<MyWaiter> waiters =
@@ -75,8 +86,10 @@ public class HostAgent extends Agent {
     /** Customer sends this message to be added to the wait list 
      * @param customer customer that wants to be added */
     public void msgIWantToEat(CustomerAgent customer){
-	waitList.add(customer);
+	//print("Here is Customer");
+    waitList.add(new MyCustomer(customer, CustomerState.Pending));
 	stateChanged();
+	//print("" + this.stateChange.availablePermits());
     }
 
     /** Waiter sends this message after the customer has left the table 
@@ -98,6 +111,7 @@ public class HostAgent extends Agent {
     }
     
     public void msgResumeWork(WaiterAgent w) {
+    	print(w.getName() + " resuming work");
     	for (MyWaiter waiter : waiters) {
     		if (waiter.wtr.equals(w))
     			waiter.pending = false;
@@ -105,16 +119,57 @@ public class HostAgent extends Agent {
     	}
     	stateChanged();
     }
+    
+    public void msgStayOrLeave(CustomerAgent c, boolean choice) {
+    	if (choice)
+    		print(c.getName() + " waiting");
+    	else
+    		print(c.getName() + " leaving");
+    	MyCustomer temp = null;
+    	for (MyCustomer cu : waitList) {
+    		if (cu.customer.equals(c)) 
+    			temp = cu;
+    	}
+    	if (temp != null && choice)
+    		temp.state = CustomerState.Waiting;
+    	if (temp != null && !choice) {
+    		print("" + waitList.remove(temp));
+    	}
+    	stateChanged();
+    }
 
     /** Scheduler.  Determine what action is called for, and do it. */
     protected boolean pickAndExecuteAnAction() {
+    	//print("Here");
     	for (MyWaiter waiter : waiters) {
 			if (waiter.pending) {
 				decideOnBreak(waiter);
+				return true;
 			}
 		}
-	
-    if(!waitList.isEmpty() && !waiters.isEmpty()){
+	boolean full = true;
+	boolean onBreak = true;
+	for (MyWaiter w : waiters) {
+		if (w.working)
+			onBreak = false;
+	}
+	for (int i = 0; i < nTables; i++)
+		if (!tables[i].occupied) {
+			full = false;
+			break;
+		}
+	//print("" + waiters.size());
+	//print("" + full);
+	//print("" + onBreak);
+	if (full || onBreak) {
+		for (MyCustomer c : waitList) {
+			if (c.state == CustomerState.Pending) {
+				tellCustomerFull(c);
+				return true;
+			}
+		}
+	}
+    if(!waitList.isEmpty() && !waiters.isEmpty() && !onBreak){
 	    synchronized(waiters){
 		//Finds the next waiter that is working
 	    while(!waiters.get(nextWaiter).working){
@@ -128,8 +183,11 @@ public class HostAgent extends Agent {
 
 		if(!tables[i].occupied){
 		    synchronized(waitList){
-			tellWaiterToSitCustomerAtTable(waiters.get(nextWaiter),
-			    waitList.get(0), i);
+		    	for (MyCustomer c : waitList)
+		    		if (c.state != CustomerState.Deciding) {
+		    			tellWaiterToSitCustomerAtTable(waiters.get(nextWaiter), c, i);
+		    			break;
+		    		}
 		    }
 		    return true;
 		}
@@ -149,9 +207,9 @@ public class HostAgent extends Agent {
      * @param waiter
      * @param customer
      * @param tableNum */
-    private void tellWaiterToSitCustomerAtTable(MyWaiter waiter, CustomerAgent customer, int tableNum){
+    private void tellWaiterToSitCustomerAtTable(MyWaiter waiter, MyCustomer customer, int tableNum){
 	print("Telling " + waiter.wtr + " to sit " + customer +" at table "+(tableNum+1));
-	waiter.wtr.msgSitCustomerAtTable(customer, tableNum);
+	waiter.wtr.msgSitCustomerAtTable(customer.customer, tableNum);
 	tables[tableNum].occupied = true;
 	waitList.remove(customer);
 	nextWaiter = (nextWaiter+1)%waiters.size();
@@ -171,6 +229,12 @@ public class HostAgent extends Agent {
     		w.wtr.msgDecisionOnBreak(false);
     		w.working = true;
     	}
+    	stateChanged();
+    }
+    
+    private void tellCustomerFull(MyCustomer c) {
+    	c.state = CustomerState.Deciding;
+		c.customer.msgFullRightNow();
     }
 	
     

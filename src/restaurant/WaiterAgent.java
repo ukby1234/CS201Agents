@@ -1,6 +1,7 @@
 package restaurant;
 import java.awt.Color;
 import restaurant.gui.RestaurantGui;
+import restaurant.gui.RestaurantPanel;
 import restaurant.layoutGUI.*;
 import agent.Agent;
 import java.util.Timer;
@@ -59,6 +60,7 @@ public class WaiterAgent extends Agent {
     private CashierAgent cashier;
 
     //Animation Variables
+    RestaurantGui mainframe;
     AStarTraversal aStar;
     Restaurant restaurant; //the gui layout
     GuiWaiter guiWaiter; 
@@ -164,6 +166,7 @@ public class WaiterAgent extends Agent {
     		state = WaiterState.Working;
     	}
     	onBreak = working;
+    	mainframe.setstateCB(onBreak);
     	stateChanged();
     }
 
@@ -175,8 +178,10 @@ public class WaiterAgent extends Agent {
 	print("" + state);
     if (state)
     	this.state = WaiterState.Pending_Break;
-    else
+    else {
     	this.state = WaiterState.Pending_Resume;
+    	this.onBreak = false;
+    }
 	stateChanged();
     }
     
@@ -497,6 +502,9 @@ public class WaiterAgent extends Agent {
     public void setCashier(CashierAgent cashier) {
     	this.cashier = cashier;
     }
-
+    
+    public void setGuiPanel(RestaurantGui frame) {
+    	mainframe = frame;
+    }
 }
 

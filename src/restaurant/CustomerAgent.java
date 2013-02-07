@@ -34,7 +34,7 @@ public class CustomerAgent extends Agent {
 	//{NO_ACTION,NEED_SEATED,NEED_DECIDE,NEED_ORDER,NEED_EAT,NEED_LEAVE};
     private AgentState state = AgentState.DoingNothing;//The start state
     public enum AgentEvent 
-	    {gotHungry, beingSeated, decidedChoice, waiterToTakeOrder, foodDelivered, doneEating, gotBill, gotChange};
+	    {gotHungry, beingSeated, decidedChoice, waiterToTakeOrder, foodDelivered, doneEating, gotBill, gotChange, hostFull};
     List<AgentEvent> events = new ArrayList<AgentEvent>();
     
     /** Constructor for CustomerAgent class 
@@ -114,7 +114,19 @@ public class CustomerAgent extends Agent {
     	this.change = change;
     	stateChanged();
     }
-
+    
+    public void msgFullRightNow() {
+    	print("Restaurant Full");
+    	events.add(AgentEvent.hostFull);
+    	stateChanged();
+    }
+    
+    public void msgLeaving() {
+    	print("I'm Leaving");
+    	this.state = AgentState.DoingNothing;
+    	isHungry = false;
+    	stateChanged();
+    }
     /** Scheduler.  Determine what action is called for, and do it. */
     protected boolean pickAndExecuteAnAction() {
 	if (events.isEmpty()) return false;
@@ -134,6 +146,10 @@ public class CustomerAgent extends Agent {
 		makeMenuChoice();
 		state = AgentState.SeatedWithMenu;
 		return true;
+	    }
+	    if (event == AgentEvent.hostFull) {
+	    	decideWaiting();
+	    	return true;
 	    }
 	}
 	if (state == AgentState.SeatedWithMenu) {
@@ -261,6 +277,17 @@ public class CustomerAgent extends Agent {
     	print(String.format("Got Change: %.2f", this.change));
     	money = change;
     	stateChanged();
+    }
+    
+    private void decideWaiting() {
+    	Double random = Math.random();
+    	if (random >= 0.5)
+    		host.msgStayOrLeave(this, true);
+    	else {
+    		host.msgStayOrLeave(this, false);
+    		guiCustomer.leave();
+    		this.msgLeaving();
+    	}
     }
 
     // *** EXTRA ***

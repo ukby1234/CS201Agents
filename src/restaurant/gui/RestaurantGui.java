@@ -134,6 +134,11 @@ public class RestaurantGui extends JFrame implements ActionListener{
 	}
     }
 	
+	public void setstateCB(boolean state) {
+		stateCB.setSelected(state);
+	}
+    
+	
 	
     /** Main routine to get gui started */
     public static void main(String[] args){
