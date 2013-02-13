@@ -42,6 +42,8 @@ public class RestaurantPanel extends JPanel {
     private JPanel restLabel = new JPanel();
     private ListPanel customerPanel = new ListPanel(this, "Customers");
     private ListPanel waiterPanel = new ListPanel(this, "Waiters");
+    private ListPanel hostPanel = new ListPanel(this, "Host");
+    
     private JPanel group = new JPanel();
 
     private RestaurantGui gui; //reference to main gui
@@ -119,13 +121,15 @@ public class RestaurantPanel extends JPanel {
 
 	setLayout(new GridLayout(1,2, 20,20));
 	group.setLayout(new GridLayout(1,2, 10,10));
-	
+	hostPanel.addPerson(host.getName());
+	hostPanel.startThread();
 	group.add(waiterPanel);
 	group.add(customerPanel);
-	
+	group.add(hostPanel);
 	initRestLabel();
 	add(restLabel);
 	add(group);
+
     }
 
     /** Sets up the restaurant label that includes the menu, 
@@ -163,6 +167,8 @@ public class RestaurantPanel extends JPanel {
 		if(temp.getName() == name)
 		    gui.updateInfoPanel(temp);
 	    }
+	}else if(type.equals("Host")) {
+		gui.updateInfoPanel(host);
 	}
     }
 	

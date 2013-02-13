@@ -1,6 +1,7 @@
 package restaurant.gui;
 
 import restaurant.CustomerAgent;
+import restaurant.HostAgent;
 import restaurant.WaiterAgent;
 
 import javax.swing.*;
@@ -14,8 +15,8 @@ import java.io.File;
  * Contains the main frame and subsequent panels */
 public class RestaurantGui extends JFrame implements ActionListener{
    
-    private final int WINDOWX = 450;
-    private final int WINDOWY = 350;
+    private final int WINDOWX = 650;
+    private final int WINDOWY = 450;
 
     private RestaurantPanel restPanel = new RestaurantPanel(this);
     private JPanel infoPanel = new JPanel();
@@ -84,7 +85,14 @@ public class RestaurantGui extends JFrame implements ActionListener{
 	    stateCB.setEnabled(true);
 	    infoLabel.setText(
 	    "<html><pre>     Name: " + waiter.getName() + " </html>");
-	}	   
+	}else if (person instanceof HostAgent) {
+		HostAgent host = (HostAgent) person;
+		stateCB.setText("Allow Break?");
+		stateCB.setSelected(host.getOverallAllowBreak());
+		stateCB.setEnabled(true);
+		infoLabel.setText(
+			    "<html><pre>     Name: " + host.getName() + " </html>");
+	}
 
 	infoPanel.validate();
     }
@@ -101,6 +109,10 @@ public class RestaurantGui extends JFrame implements ActionListener{
 	    }else if(currentPerson instanceof WaiterAgent){
 		WaiterAgent w = (WaiterAgent) currentPerson;
 		w.setBreakStatus(stateCB.isSelected());
+	    }
+	    else if (currentPerson instanceof HostAgent) {
+	    	HostAgent host = (HostAgent) currentPerson;
+	    	host.setOverallAllowBreak(stateCB.isSelected());
 	    }
 	}
 	else if (e.getSource() == addTable)
@@ -145,5 +157,6 @@ public class RestaurantGui extends JFrame implements ActionListener{
 	RestaurantGui gui = new RestaurantGui();
 	gui.setVisible(true);
 	gui.setResizable(false);
+	//gui.restPanel.hostPanel.addPerson("Test");
     }
 }

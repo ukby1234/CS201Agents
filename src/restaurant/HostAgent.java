@@ -67,6 +67,7 @@ public class HostAgent extends Agent {
 
     //Name of the host
     private String name;
+    boolean overallAllowBreak = true;
 
     /** Constructor for HostAgent class 
      * @param name name of the host */
@@ -218,10 +219,10 @@ public class HostAgent extends Agent {
     
     private void decideOnBreak(MyWaiter w) {
     	print(String.format("%s on break", w.wtr.getName()));
-    	Double res = Math.random();
+    	//Double res = Math.random();
     	//w.wtr.msgDecisionOnBreak(true);
     	w.pending = false;
-    	if (res > 0.5) {
+    	if (overallAllowBreak) {
     		w.working = false;
     		w.wtr.msgDecisionOnBreak(true);
     	}
@@ -264,5 +265,13 @@ public class HostAgent extends Agent {
 	}  		  			
 	tempTables[nTables - 1] = new Table(nTables - 1);
 	tables = tempTables;
+    }
+    
+    public boolean getOverallAllowBreak() {
+    	return overallAllowBreak;
+    }
+    
+    public void setOverallAllowBreak(boolean overall) {
+    	overallAllowBreak = overall;
     }
 }

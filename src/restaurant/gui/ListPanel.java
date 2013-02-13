@@ -22,7 +22,6 @@ public class ListPanel extends JPanel implements ActionListener{
     
     private RestaurantPanel restPanel;
     private String type;
-
     /** Constructor for ListPanel.  Sets up all the gui
      * @param rp reference to the restaurant panel
      * @param type indicates if this is for customers or waiters */
@@ -35,7 +34,8 @@ public class ListPanel extends JPanel implements ActionListener{
 
 	addPersonB.addActionListener(this);
 	add(addPersonB);
-
+	if (type.equals("Host"))
+		addPersonB.setEnabled(false);
 	view.setLayout(new BoxLayout((Container) view, BoxLayout.Y_AXIS));
 	pane.setViewportView(view);
 	add(pane);
@@ -45,8 +45,9 @@ public class ListPanel extends JPanel implements ActionListener{
      * Handles the event of the add button being pressed */
     public void actionPerformed(ActionEvent e){
 	
-	if(e.getSource() == addPersonB)
+	if(e.getSource() == addPersonB) {
 	    addPerson(JOptionPane.showInputDialog("Please enter a name:"));
+	}
 	else {
 
 	    for(int i=0; i < list.size(); i++){
@@ -89,7 +90,40 @@ public class ListPanel extends JPanel implements ActionListener{
 	button.addActionListener(this);
 	list.add(button);
 	view.add(button);
+	System.out.println(pane.getSize());
 	restPanel.addPerson(type, name);
 	validate();
     }
+    
+    public void startThread(){
+    	ChangeButtonSize thread = new ChangeButtonSize();
+    	thread.start();
+    }
+    
+    private class ChangeButtonSize extends Thread {
+    	public void run() {
+    		while(checkButtons());
+    		System.out.println("Exit");
+    	}
+    	private boolean checkButtons() {
+    		boolean flag = false;
+    		for (Component c : view.getComponents())
+    			if (c instanceof JButton) {
+    				JButton button = (JButton) c;
+    				if(button.getHeight() == 0 && button.getWidth() == 0) {
+    					flag = true;
+    					Dimension paneSize = pane.getSize();
+    					Dimension buttonSize = new Dimension(paneSize.width-20, 
+    											    (int)(paneSize.height/7));
+    					button.setPreferredSize(buttonSize);
+    					button.setMinimumSize(buttonSize);
+    					button.setMaximumSize(buttonSize);
+    					pane.revalidate();
+    			}
+    		}
+    		return flag;
+    	}
+    	
+    }
+    
 }
