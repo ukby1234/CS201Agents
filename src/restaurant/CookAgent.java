@@ -15,85 +15,99 @@ import java.awt.Color;
  */
 public class CookAgent extends Agent {
 
-    //List of all the orders
-    private List<Order> orders = new ArrayList<Order>();
-    private Map<String,FoodData> inventory = new HashMap<String,FoodData>();
-    private List<InventoryOrder> invords = new ArrayList<InventoryOrder>();
-    private List<MarketAgent> agents = new ArrayList<MarketAgent>();
-    private final int surplus = 10;
-    private int marketPos = 0;
-    public enum InventoryStatus {Pending, Ordered, Received, Done};
-    public enum Status {pending, cooking, done}; // order status
+	//List of all the orders
+	private List<Order> orders = new ArrayList<Order>();
+	private List<ChangeOrder> changeOrders = new ArrayList<ChangeOrder>();
+	private Map<String,FoodData> inventory = new HashMap<String,FoodData>();
+	private List<InventoryOrder> invords = new ArrayList<InventoryOrder>();
+	private List<MarketAgent> agents = new ArrayList<MarketAgent>();
+	private final int surplus = 10;
+	private int marketPos = 0;
+	public enum InventoryStatus {Pending, Ordered, Received, Done};
+	public enum Status {pending, waiting, cooking, done}; // order status
+	private boolean waiting = false;
+	//Name of the cook
+	private String name;
 
-    //Name of the cook
-    private String name;
+	//Timer for simulation
+	Timer timer = new Timer();
+	Restaurant restaurant; //Gui layout
 
-    //Timer for simulation
-    Timer timer = new Timer();
-    Restaurant restaurant; //Gui layout
-
-    /** Constructor for CookAgent class
-     * @param name name of the cook
-     */
-    public CookAgent(String name, Restaurant restaurant) {
-	super();
-
-	this.name = name;
-	this.restaurant = restaurant;
-	//Create the restaurant's inventory.
-	inventory.put("Steak",new FoodData("Steak", 5, 5, 5));
-	inventory.put("Chicken",new FoodData("Chicken", 4, 5, 5));
-	inventory.put("Pizza",new FoodData("Pizza", 3, 5, 5));
-	inventory.put("Salad",new FoodData("Salad", 2, 5, 5));
-    }
-    /** Private class to store information about food.
-     *  Contains the food type, its cooking time, and ...
-     */
-    private class FoodData {
-	String type; //kind of food
-	double cookTime;
-	int amount;
-	int limit;
-	// other things ...
-	
-	public FoodData(String type, double cookTime, int amount, int limit){
-	    this.type = type;
-	    this.cookTime = cookTime;
-	    this.amount = amount;
-	    this.limit = limit;
-	}
-    }
-    /** Private class to store order information.
-     *  Contains the waiter, table number, food item,
-     *  cooktime and status.
-     */
-    private class Order {
-	public WaiterAgent waiter;
-	public int tableNum;
-	public String choice;
-	public Status status;
-	public Food food; //a gui variable
-
-	/** Constructor for Order class 
-	 * @param waiter waiter that this order belongs to
-	 * @param tableNum identification number for the table
-	 * @param choice type of food to be cooked 
+	/** Constructor for CookAgent class
+	 * @param name name of the cook
 	 */
-	public Order(WaiterAgent waiter, int tableNum, String choice){
-	    this.waiter = waiter;
-	    this.choice = choice;
-	    this.tableNum = tableNum;
-	    this.status = Status.pending;
-	}
-	
+	public CookAgent(String name, Restaurant restaurant) {
+		super();
 
-	/** Represents the object as a string */
-	public String toString(){
-	    return choice + " for " + waiter ;
+		this.name = name;
+		this.restaurant = restaurant;
+		//Create the restaurant's inventory.
+		inventory.put("Steak",new FoodData("Steak", 5, 1, 0));
+		inventory.put("Chicken",new FoodData("Chicken", 4, 0, 0));
+		inventory.put("Pizza",new FoodData("Pizza", 3, 0, 0));
+		inventory.put("Salad",new FoodData("Salad", 2, 0, 0));
 	}
-    }
-    
-    private class InventoryOrder {
+	/** Private class to store information about food.
+	 *  Contains the food type, its cooking time, and ...
+	 */
+	private class FoodData {
+		String type; //kind of food
+		double cookTime;
+		int amount;
+		int limit;
+		// other things ...
+
+		public FoodData(String type, double cookTime, int amount, int limit){
+			this.type = type;
+			this.cookTime = cookTime;
+			this.amount = amount;
+			this.limit = limit;
+		}
+	}
+	/** Private class to store order information.
+	 *  Contains the waiter, table number, food item,
+	 *  cooktime and status.
+	 */
+	private class Order {
+		public WaiterAgent waiter;
+		public int tableNum;
+		public String choice;
+		public Status status;
+		public Food food; //a gui variable
+
+		/** Constructor for Order class 
+		 * @param waiter waiter that this order belongs to
+		 * @param tableNum identification number for the table
+		 * @param choice type of food to be cooked 
+		 */
+		public Order(WaiterAgent waiter, int tableNum, String choice){
+			this.waiter = waiter;
+			this.choice = choice;
+			this.tableNum = tableNum;
+			this.status = Status.pending;
+		}
+
+
+		/** Represents the object as a string */
+		public String toString(){
+			return choice + " for " + waiter ;
+		}
+	}
+
+	private class ChangeOrder {
+		public WaiterAgent waiter;
+		public int tableNum;
+		public String choice;
+		public boolean decision;
+		public ChangeOrder(WaiterAgent waiter, int tableNum, String choice) {
+			this.waiter = waiter;
+			this.tableNum = tableNum;
+			this.choice = choice;
+			this.decision = false;
+		}
+	}
+
+	private class InventoryOrder {
 		String type;
 		MarketAgent market;
 		InventoryStatus status;
@@ -106,156 +120,228 @@ public class CookAgent extends Agent {
 		}
 	}
 
-    
 
 
-    // *** MESSAGES ***
 
-    /** Message from a waiter giving the cook a new order.
-     * @param waiter waiter that the order belongs to
-     * @param tableNum identification number for the table
-     * @param choice type of food to be cooked
-     */
-    public void msgHereIsAnOrder(WaiterAgent waiter, int tableNum, String choice){
-	orders.add(new Order(waiter, tableNum, choice));
-	stateChanged();
-    }
-    
-    public void msgDelivery(String type, int amount) {
-    	if (amount == 0)
-    		print(type + " deliver fails");
-    	else
-    		print(String.format("%s delivers %d", type, amount));
-    	for (InventoryOrder o : invords) {
-    		if (o.type.equals(type) && o.status == InventoryStatus.Ordered) {
-    			o.status = InventoryStatus.Received;
-    			o.amount = amount;
-    		}
-    	}
-    	stateChanged();
-    }
+	// *** MESSAGES ***
 
-
-    /** Scheduler.  Determine what action is called for, and do it. */
-    protected boolean pickAndExecuteAnAction() {
-	
-	for (String type : inventory.keySet()) {
-		FoodData fd = inventory.get(type);
-		boolean flag = true;
-		for (InventoryOrder o : invords) {
-			if (o.type.equals(fd.type) && o.status != InventoryStatus.Done)
-				flag = false;
-			
-		}
-		if (fd.amount < fd.limit && flag) {
-			orderMore(fd);
-			return true;
-		}
-	}
-	for (InventoryOrder o : invords) {
-		if (o.status == InventoryStatus.Pending) {
-			requestMarket(o);
-			return true;
-		}
-		if (o.status == InventoryStatus.Received) {
-			addToInventory(o);
-			return true;
-		}
-	}
-    //If there exists an order o whose status is done, place o.
-	for(Order o:orders){
-	    if(o.status == Status.done){
-		placeOrder(o);
-		return true;
-	    }
-	}
-	//If there exists an order o whose status is pending, cook o.
-	for(Order o:orders){
-	    if(o.status == Status.pending){
-		cookOrder(o);
-		return true;
-	    }
-	}
-
-	//we have tried all our rules (in this case only one) and found
-	//nothing to do. So return false to main loop of abstract agent
-	//and wait.
-	return false;
-    }
-    
-
-    // *** ACTIONS ***
-    
-    /** Starts a timer for the order that needs to be cooked. 
-     * @param order
-     */
-    private void cookOrder(Order order){
-	inventory.get(order.choice).amount--;
-	print(String.format("Now I have %s %d", order.choice, inventory.get(order.choice).amount));
-    DoCooking(order);
-	order.status = Status.cooking;
-    }
-
-    private void placeOrder(Order order){
-	DoPlacement(order);
-	order.waiter.msgOrderIsReady(order.tableNum, order.food);
-	orders.remove(order);
-    }
-
-    private void orderMore(FoodData fd) {
-    	print("called");
-    	invords.add(new InventoryOrder(fd.type, agents.get(marketPos), InventoryStatus.Pending, fd.limit - fd.amount + surplus));
-    	stateChanged();
-    }
-    
-    private void requestMarket(InventoryOrder o) {
-    	//print("called");
-    	o.status = InventoryStatus.Ordered;
-    	o.market.msgOrder(this, o.type, o.amount);
-    	stateChanged();
-    }
-    
-    private void addToInventory(InventoryOrder o) {
-    	if (o.amount == 0) {
-    		o.status = InventoryStatus.Done;
-    		marketPos = (marketPos + 1) % agents.size();
-    	}
-    	else {
-    		inventory.get(o.type).amount += o.amount;
-    		print(String.format("%s is now %d", o.type, inventory.get(o.type).amount));
-    		o.status = InventoryStatus.Done;
-    	}
-    	stateChanged();
-    }
-
-    // *** EXTRA -- all the simulation routines***
-
-    /** Returns the name of the cook */
-    public String getName(){
-        return name;
-    }
-    
-    public void addMarket(MarketAgent market) {
-    	agents.add(market);
-    }
-    private void DoCooking(final Order order){
-	print("Cooking:" + order + " for table:" + (order.tableNum+1));
-	//put it on the grill. gui stuff
-	order.food = new Food(order.choice.substring(0,2),new Color(0,255,255), restaurant);
-	order.food.cookFood();
-
-	timer.schedule(new TimerTask(){
-	    public void run(){//this routine is like a message reception    
-		order.status = Status.done;
+	/** Message from a waiter giving the cook a new order.
+	 * @param waiter waiter that the order belongs to
+	 * @param tableNum identification number for the table
+	 * @param choice type of food to be cooked
+	 */
+	public void msgHereIsAnOrder(WaiterAgent waiter, int tableNum, String choice){
+		for (Order o : orders)
+			if (o.tableNum == tableNum) {
+				print("found");
+				o.waiter = waiter;
+				o.choice = choice;
+				o.status = Status.pending;
+				stateChanged();
+				return;
+			}
+		orders.add(new Order(waiter, tableNum, choice));
 		stateChanged();
-	    }
-	}, (int)(inventory.get(order.choice).cookTime*1000));
-    }
-    public void DoPlacement(Order order){
-	print("Order finished: " + order + " for table:" + (order.tableNum+1));
-	order.food.placeOnCounter();
-    }
+	}
+
+	public void msgDelivery(String type, int amount) {
+		if (amount == 0)
+			print(type + " deliver fails");
+		else
+			print(String.format("%s delivers %d", type, amount));
+		for (InventoryOrder o : invords) {
+			if (o.type.equals(type) && o.status == InventoryStatus.Ordered) {
+				o.status = InventoryStatus.Received;
+				o.amount = amount;
+			}
+		}
+		stateChanged();
+	}
+
+	public void msgchangeOrder(WaiterAgent waiter, int tableNum, String choice) {
+		print(String.format("Cook received %d change order to %s", tableNum, choice));
+		changeOrders.add(new ChangeOrder(waiter, tableNum, choice));
+		stateChanged();
+	}
+
+
+	/** Scheduler.  Determine what action is called for, and do it. */
+	protected boolean pickAndExecuteAnAction() {
+		if (!changeOrders.isEmpty()) {
+			print("Here");
+			ChangeOrder co = changeOrders.remove(0);
+			for (Order o : orders) {
+				if (o.tableNum == co.tableNum) {
+					if(o.status == Status.pending || o.status == Status.waiting) {
+						co.decision = true;
+					}
+				}
+				changeOrder(o, co);
+			}
+			return true;
+		}
+		for (Order o : orders) {
+			if (inventory.get(o.choice).amount <= 0 && o.status == Status.pending) {
+				runOutOfFood(o);
+				return true;
+			}
+		}
+
+		for (String type : inventory.keySet()) {
+			FoodData fd = inventory.get(type);
+			boolean flag = true;
+			for (InventoryOrder o : invords) {
+				if (o.type.equals(fd.type) && o.status != InventoryStatus.Done)
+					flag = false;
+
+			}
+			if (fd.amount < fd.limit && flag) {
+				orderMore(fd);
+				return true;
+			}
+		}
+		for (InventoryOrder o : invords) {
+			if (o.status == InventoryStatus.Pending) {
+				requestMarket(o);
+				return true;
+			}
+			if (o.status == InventoryStatus.Received) {
+				addToInventory(o);
+				return true;
+			}
+		}
+		//If there exists an order o whose status is done, place o.
+		for(Order o:orders){
+			if(o.status == Status.done){
+				placeOrder(o);
+				return true;
+			}
+		}
+		//If there exists an order o whose status is pending, cook o.
+		for(final Order o:orders){
+			if(o.status == Status.pending){
+				if(waiting) {
+					print("Waiting 1500 milliseconds");
+					o.status = Status.waiting;
+					timer.schedule(new TimerTask() {
+						public void run() {
+							cookOrder(o);
+						}
+					}, 1500);
+				}else
+					cookOrder(o);
+				return true;
+			}
+		}
+
+		//we have tried all our rules (in this case only one) and found
+		//nothing to do. So return false to main loop of abstract agent
+		//and wait.
+		return false;
+	}
+
+
+	// *** ACTIONS ***
+
+	/** Starts a timer for the order that needs to be cooked. 
+	 * @param order
+	 */
+	private void cookOrder(Order order){
+		inventory.get(order.choice).amount--;
+		print(String.format("Now I have %s %d", order.choice, inventory.get(order.choice).amount));
+		DoCooking(order);
+		order.status = Status.cooking;
+		stateChanged();
+	}
+
+	private void placeOrder(Order order){
+		DoPlacement(order);
+		order.waiter.msgOrderIsReady(order.tableNum, order.food);
+		orders.remove(order);
+		stateChanged();
+	}
+
+	private void orderMore(FoodData fd) {
+		print("called");
+		invords.add(new InventoryOrder(fd.type, agents.get(marketPos), InventoryStatus.Pending, fd.limit - fd.amount + surplus));
+		stateChanged();
+	}
+
+	private void requestMarket(InventoryOrder o) {
+		//print("called");
+		o.status = InventoryStatus.Ordered;
+		o.market.msgOrder(this, o.type, o.amount);
+		stateChanged();
+	}
+
+	private void addToInventory(InventoryOrder o) {
+		if (o.amount == 0) {
+			o.status = InventoryStatus.Done;
+			marketPos = (marketPos + 1) % agents.size();
+		}
+		else {
+			inventory.get(o.type).amount += o.amount;
+			print(String.format("%s is now %d", o.type, inventory.get(o.type).amount));
+			o.status = InventoryStatus.Done;
+		}
+		stateChanged();
+	}
+
+	private void runOutOfFood(Order o) {
+		print(String.format("Running Out Of Food for %s", o.choice));
+		o.waiter.msgCookReorder(o.tableNum);
+		//orders.remove(o);
+		o.status = Status.waiting;
+		stateChanged();
+	}
+
+	private void changeOrder(Order o, ChangeOrder co) {
+		if(co.decision) {
+			print(String.format("Change order for %d", co.tableNum));
+			o.choice = co.choice;
+			o.status = Status.pending;
+		} else
+			print(String.format("Not change order for %d", co.tableNum));
+		co.waiter.msgDecisionChangeOrder(co.tableNum, co.decision);
+		stateChanged();
+			
+	}
+	// *** EXTRA -- all the simulation routines***
+
+	/** Returns the name of the cook */
+	public String getName(){
+		return name;
+	}
+
+	public void addMarket(MarketAgent market) {
+		agents.add(market);
+	}
+	private void DoCooking(final Order order){
+		print("Cooking:" + order + " for table:" + (order.tableNum+1));
+		//put it on the grill. gui stuff
+		order.food = new Food(order.choice.substring(0,2),new Color(0,255,255), restaurant);
+		order.food.cookFood();
+
+		timer.schedule(new TimerTask(){
+			public void run(){//this routine is like a message reception    
+				order.status = Status.done;
+				stateChanged();
+			}
+		}, (int)(inventory.get(order.choice).cookTime*1000));
+	}
+	public void DoPlacement(Order order){
+		print("Order finished: " + order + " for table:" + (order.tableNum+1));
+		order.food.placeOnCounter();
+	}
+	
+	public boolean getWaiting() {
+		return waiting;
+	}
+	
+	public void setWaiting(boolean waiting) {
+		this.waiting = waiting;
+	}
 }
 
 
-    
+

@@ -9,6 +9,7 @@ public class MarketAgent extends Agent {
 	Map<String, FoodData> inventory = new HashMap<String, FoodData>();
 	List<MyOrder> orders = new ArrayList<MyOrder>();
 	enum OrderStatus {Received, Delivered, Paying, Failed};
+	boolean isEnoughInventory = true;
 	public MarketAgent(String name) {
 		this.name = name;
 	}
@@ -39,7 +40,10 @@ public class MarketAgent extends Agent {
 	}
 	//Actions
 	private void deliverOrder(MyOrder o) {
-		//print("" + o.amount);
+		print(String.format("Delivering %s in %d amount(1000 millisecondes)", o.choice, o.amount));
+		try {
+			Thread.sleep(1000);
+		}catch(InterruptedException e) {}
 		if (inventory.get(o.choice).amount - o.amount >= 0) {
 			o.cook.msgDelivery(o.choice, o.amount);
 			inventory.get(o.choice).amount -= o.amount;
@@ -95,5 +99,23 @@ public class MarketAgent extends Agent {
 	public void addInventory(String choice, int amount, double price) {
 		inventory.put(choice, new FoodData(price, amount));
 	}
-
+	
+	public void cleanInventory() {
+		inventory.clear();
+	}
+	
+	public boolean getEnoughInventory() {
+		return isEnoughInventory;
+	}
+	
+	public void setEnoughInventory(boolean enough) {
+		isEnoughInventory = enough;
+		if(!enough) {
+			cleanInventory();
+			addInventory("Steak", 3, 10.99);
+			addInventory("Chicken", 3, 10.99);
+			addInventory("Pizza", 3, 10.99);
+			addInventory("Salad", 3, 10.99);
+		}
+	}
 }
