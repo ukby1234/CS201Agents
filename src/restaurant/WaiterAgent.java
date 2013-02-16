@@ -208,6 +208,7 @@ public class WaiterAgent extends Agent {
 				return;
 			}
 		}
+		stateChanged();
 	}
 	
 	public void msgDecisionChangeOrder(int tableNum, boolean approved) {
@@ -237,7 +238,7 @@ public class WaiterAgent extends Agent {
 	 *              false when the waiter should go off break
 	 *              Is the name onBreak right? What should it be?*/
 	public void setBreakStatus(boolean state){
-		print("" + state);
+		//print("" + state);
 		if (state)
 			this.state = WaiterState.Pending_Break;
 		else {
@@ -279,14 +280,7 @@ public class WaiterAgent extends Agent {
 			host.msgResumeWork(this);
 		}
 		if(!customers.isEmpty()){
-			//System.out.println("in scheduler, customers not empty:");
-			for(MyCustomer c:customers){
-				//print("testing for ready to order"+c.state);
-				if(c.changeOrderState == ChangeOrderState.CUST_REORDER_READY) {
-					takeReorder(c);
-					return true;
-				}
-			}	  
+			//System.out.println("in scheduler, customers not empty:");	  
 			
 			for(MyCustomer c:customers){
 				if(c.changeOrderState == ChangeOrderState.CUST_REORDER_WAITING && c.isChangedOrder != 0) {
@@ -342,19 +336,29 @@ public class WaiterAgent extends Agent {
 					return true;
 				}
 			}
-
+			
+			//Cook runs out of food
+			for(MyCustomer c : customers){
+				if(c.state == CustomerState.COOK_REORDER_PENDING){
+					reorderCustomer(c);
+					return true;
+				}
+			}
+			
 			//Gives all pending orders to the cook
 			for(MyCustomer c:customers){
 				if(c.state == CustomerState.ORDER_PENDING){
-					print("Cook");
+					//print("Cook");
 					giveOrderToCook(c);
 					return true;
 				}
 			}
 			
-			for(MyCustomer c : customers){
-				if(c.state == CustomerState.COOK_REORDER_PENDING){
-					reorderCustomer(c);
+			//Customer reorder
+			for(MyCustomer c:customers){
+				//print("testing for ready to order"+c.state);
+				if(c.changeOrderState == ChangeOrderState.CUST_REORDER_READY) {
+					takeReorder(c);
 					return true;
 				}
 			}
@@ -482,10 +486,10 @@ public class WaiterAgent extends Agent {
 	
 	private void reorderCook(MyCustomer c) {
 		print(String.format("%s changes order to %s", c.cmr.getName(), c.secondChoice));
-		tables[c.tableNum].takeOrder(c.choice.substring(0,2)+"?");
+		tables[c.tableNum].takeOrder(c.secondChoice.substring(0,2)+"?");
 		restaurant.placeFood(tables[c.tableNum].foodX(),
 				tables[c.tableNum].foodY(),
-				new Color(255, 255, 255), c.choice.substring(0,2)+"?");
+				new Color(255, 255, 255), c.secondChoice.substring(0,2)+"?");
 		cook.msgchangeOrder(this, c.tableNum, c.secondChoice);
 		c.changeOrderState = ChangeOrderState.CUST_REORDER_WAITING;
 		stateChanged();

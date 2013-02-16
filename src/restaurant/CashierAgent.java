@@ -9,14 +9,15 @@ public class CashierAgent extends Agent {
 	Menu menu;
 	WaiterAgent waiter;
 	String name;
+	Timer t = new Timer();
 	public CashierAgent(String name) {
 		this.name = name;
 		menu = new Menu();
 	}
 	//Messaging
 	void msgMakeBill(WaiterAgent wtr, CustomerAgent cta, String choice) {
-		print("Making Bill for " + cta.getName());
-		System.out.println(menu.choices.get(choice));
+		//print("Making Bill for " + cta.getName());
+		//System.out.println(menu.choices.get(choice));
 		Bill bill = new Bill(menu.choices.get(choice), BillStatus.Ready);
 		for (MyCustomer c : customers) {
 			if (c.customer.equals(cta)) {
@@ -31,7 +32,6 @@ public class CashierAgent extends Agent {
 	}
 	
 	void msgHereIsPayment(CustomerAgent cta, Double payment) {
-		print("Receiving Payment from " + cta.getName());
 		for (MyCustomer c : customers) {
 			if (c.customer.equals(cta)) {
 				c.bill.status = BillStatus.Received;
@@ -42,7 +42,6 @@ public class CashierAgent extends Agent {
 	}
 	
 	void msgHereIsBill(MarketAgent mka, Double amount) {
-		print(String.format("Paying to %s %.2f", mka.getName(), amount));
 		markets.add(new MyMarket(mka, BillStatus.Ready, amount));
 		stateChanged();
 	}
@@ -68,13 +67,18 @@ public class CashierAgent extends Agent {
 	}
 	//Actions
 	private void makeBill(MyCustomer c) {
-		print("Called");
+		//print("Called");
+		print("Making bill for " + c.customer.getName() + " (1000 milliseconds)");
+		try {
+			Thread.sleep(1000);
+		}catch (InterruptedException e) {}
 		c.waiter.msgHereIsBill(c.customer, c.bill.price);
 		c.bill.status = BillStatus.Pending;
 		stateChanged();
 	}
 	
 	private void makeChange(MyCustomer c) {
+		print("Receiving Payment from " + c.customer.getName() + " of $" + c.payment);
 		if (c.payment - c.bill.price >= 0)
 			c.customer.msgHereIsChange(c.payment - c.bill.price);
 		else {
@@ -86,6 +90,7 @@ public class CashierAgent extends Agent {
 	}
 	
 	private void payToMarket(MyMarket m) {
+		print(String.format("Paying to %s %.2f", m.market.getName(), m.bill));
 		m.market.msgHereIsPayment(m.bill);
 		m.status = BillStatus.Cleared;
 		stateChanged();

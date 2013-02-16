@@ -40,22 +40,27 @@ public class MarketAgent extends Agent {
 	}
 	//Actions
 	private void deliverOrder(MyOrder o) {
+		if (inventory.get(o.choice).amount - o.amount < 0) {
+			print("Don't have enough inventories");
+			o.cook.msgDelivery(o.choice, 0);
+			o.status = OrderStatus.Failed;
+			stateChanged();
+			return;
+		}
 		print(String.format("Delivering %s in %d amount(1000 millisecondes)", o.choice, o.amount));
 		try {
 			Thread.sleep(1000);
 		}catch(InterruptedException e) {}
-		if (inventory.get(o.choice).amount - o.amount >= 0) {
-			o.cook.msgDelivery(o.choice, o.amount);
-			inventory.get(o.choice).amount -= o.amount;
-			o.status = OrderStatus.Delivered;
-		}
-		else {
-			o.cook.msgDelivery(o.choice, 0);
-			o.status = OrderStatus.Failed;
-		}
+		o.cook.msgDelivery(o.choice, o.amount);
+		inventory.get(o.choice).amount -= o.amount;
+		o.status = OrderStatus.Delivered;
 		stateChanged();
 	}
 	private void makeBill(MyOrder o) {
+		print("Calling cashier to make a payment (1000 milliseconds)");
+		try {
+			Thread.sleep(1000);
+		}catch (InterruptedException e) {}
 		cashier.msgHereIsBill(this, o.amount * inventory.get(o.choice).price);
 		o.status = OrderStatus.Paying;
 		stateChanged();
@@ -113,9 +118,15 @@ public class MarketAgent extends Agent {
 		if(!enough) {
 			cleanInventory();
 			addInventory("Steak", 3, 10.99);
-			addInventory("Chicken", 3, 10.99);
-			addInventory("Pizza", 3, 10.99);
-			addInventory("Salad", 3, 10.99);
+			addInventory("Chicken", 3, 5.99);
+			addInventory("Pizza", 3, 0.99);
+			addInventory("Salad", 3, 3.99);
+		}else {
+			cleanInventory();
+			addInventory("Steak", 50, 10.99);
+			addInventory("Chicken", 50, 5.99);
+			addInventory("Pizza", 50, 0.99);
+			addInventory("Salad", 50, 3.99);
 		}
 	}
 }

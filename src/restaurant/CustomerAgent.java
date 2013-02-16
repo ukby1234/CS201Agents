@@ -26,13 +26,15 @@ public class CustomerAgent extends Agent {
 	private Double money;
 	private Double change;
 	private Double bill;
-	boolean NonNormLeave;
-	boolean changeOrder = false;
-	boolean isOrdered = false;
+	private boolean NonNormLeave;
+	private boolean changeOrder = false;
+	private boolean isOrdered = false;
 	Timer timer = new Timer();
 	GuiCustomer guiCustomer; //for gui
 	// ** Agent state **
 	private boolean isHungry = false; //hack for gui
+	private boolean isWaiting = true;
+	private boolean isEnoughMoney = true;
 	public enum AgentState
 	{DoingNothing, WaitingInRestaurant, SeatedWithMenu, WaiterCalled, WaitingForFood, Eating, Paying, Leaving};
 	//{NO_ACTION,NEED_SEATED,NEED_DECIDE,NEED_ORDER,NEED_EAT,NEED_LEAVE};
@@ -172,7 +174,6 @@ public class CustomerAgent extends Agent {
 		if (state == AgentState.WaitingInRestaurant) {
 			if (event == AgentEvent.beingSeated)	{
 				makeMenuChoice();
-				state = AgentState.SeatedWithMenu;
 				return true;
 			}
 			if (event == AgentEvent.hostFull) {
@@ -263,7 +264,7 @@ public class CustomerAgent extends Agent {
 			leaveRestaurant();
 			return;
 		}
-		if (money < min) {
+		if (money < min && !isWaiting) {
 			print("I don't have enough money");
 			NonNormLeave = true;
 			leaveRestaurant();
@@ -275,6 +276,7 @@ public class CustomerAgent extends Agent {
 				msgDecided();	    
 			}},
 			3000);//how long to wait before running task
+		state = AgentState.SeatedWithMenu;
 		stateChanged();
 	}
 	private void callWaiter(){
@@ -330,8 +332,10 @@ public class CustomerAgent extends Agent {
 	private void leaveRestaurant() {
 		print("Leaving the restaurant");
 		guiCustomer.leave(); //for the animation
-		if(NonNormLeave)
+		if(NonNormLeave) {
 			waiter.msgLeaving(this);
+			this.msgLeaving();
+		}
 		else
 			waiter.msgDoneEatingAndLeaving(this);
 		isHungry = false;
@@ -353,8 +357,14 @@ public class CustomerAgent extends Agent {
 	}
 
 	private void payForBill() {
-		print(String.format("Paying %.2f", money));
-		cashier.msgHereIsPayment(this, money);
+		final CustomerAgent c = this;
+		print("Walking to cashier (1000 milliseconds)");
+		timer.schedule(new TimerTask() {
+			public void run() {
+				c.print(String.format("Paying %.2f", money));
+				cashier.msgHereIsPayment(c, money);
+			}
+		}, 1000);
 		stateChanged();
 	}
 
@@ -365,14 +375,22 @@ public class CustomerAgent extends Agent {
 	}
 
 	private void decideWaiting() {
-		Double random = Math.random();
-		if (random >= 0.5)
-			host.msgStayOrLeave(this, true);
-		else {
-			host.msgStayOrLeave(this, false);
-			guiCustomer.leave();
-			this.msgLeaving();
-		}
+		final CustomerAgent c = this;
+		print("Deciding for waiting 1000 milliseconds");
+		timer.schedule(new TimerTask() {
+			public void run() {
+				if (isWaiting) {
+					host.msgStayOrLeave(c, true);
+					c.print("I'm waitng");
+				}
+				else {
+					host.msgStayOrLeave(c, false);
+					guiCustomer.leave();
+					c.msgLeaving();
+				}
+			}
+		}, 1000);
+		
 	}
 
 	private void changeOrder() {
@@ -401,6 +419,26 @@ public class CustomerAgent extends Agent {
 	 ** pushed, until he eats and leaves.*/
 	public boolean isHungry() {
 		return isHungry;
+	}
+	
+	public boolean isWaiting() {
+		return isWaiting;
+	}
+	
+	public void setWaiting(boolean waiting) {
+		isWaiting = waiting;
+	}
+	
+	public boolean isEnoughMoney() {
+		return isEnoughMoney;
+	}
+	
+	public void setEnoughMoney(boolean EnoughMoney) {
+		isEnoughMoney = EnoughMoney;
+		if (EnoughMoney)
+			this.money = 100.0;
+		else
+			this.money = 5.0;
 	}
 
 	/** @return the hungerlevel of the customer */

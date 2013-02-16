@@ -26,6 +26,8 @@ public class CookAgent extends Agent {
 	public enum InventoryStatus {Pending, Ordered, Received, Done};
 	public enum Status {pending, waiting, cooking, done}; // order status
 	private boolean waiting = false;
+	private boolean isUnderLimit = false;
+	private boolean isRunOutOfFood = false;
 	//Name of the cook
 	private String name;
 
@@ -42,10 +44,10 @@ public class CookAgent extends Agent {
 		this.name = name;
 		this.restaurant = restaurant;
 		//Create the restaurant's inventory.
-		inventory.put("Steak",new FoodData("Steak", 5, 1, 0));
-		inventory.put("Chicken",new FoodData("Chicken", 4, 0, 0));
-		inventory.put("Pizza",new FoodData("Pizza", 3, 0, 0));
-		inventory.put("Salad",new FoodData("Salad", 2, 0, 0));
+		inventory.put("Steak",new FoodData("Steak", 5, 10, 5));
+		inventory.put("Chicken",new FoodData("Chicken", 4, 10, 5));
+		inventory.put("Pizza",new FoodData("Pizza", 3, 10, 5));
+		inventory.put("Salad",new FoodData("Salad", 2, 10, 5));
 	}
 	/** Private class to store information about food.
 	 *  Contains the food type, its cooking time, and ...
@@ -74,6 +76,7 @@ public class CookAgent extends Agent {
 		public String choice;
 		public Status status;
 		public Food food; //a gui variable
+		public Timer t;
 
 		/** Constructor for Order class 
 		 * @param waiter waiter that this order belongs to
@@ -85,6 +88,7 @@ public class CookAgent extends Agent {
 			this.choice = choice;
 			this.tableNum = tableNum;
 			this.status = Status.pending;
+			t = new Timer();
 		}
 
 
@@ -168,11 +172,12 @@ public class CookAgent extends Agent {
 	/** Scheduler.  Determine what action is called for, and do it. */
 	protected boolean pickAndExecuteAnAction() {
 		if (!changeOrders.isEmpty()) {
-			print("Here");
+			//print("Here");
 			ChangeOrder co = changeOrders.remove(0);
 			for (Order o : orders) {
 				if (o.tableNum == co.tableNum) {
 					if(o.status == Status.pending || o.status == Status.waiting) {
+						//print("Here");
 						co.decision = true;
 					}
 				}
@@ -221,13 +226,13 @@ public class CookAgent extends Agent {
 		for(final Order o:orders){
 			if(o.status == Status.pending){
 				if(waiting) {
-					print("Waiting 1500 milliseconds");
+					print("Waiting 5000 milliseconds");
 					o.status = Status.waiting;
-					timer.schedule(new TimerTask() {
+					o.t.schedule(new TimerTask() {
 						public void run() {
 							cookOrder(o);
 						}
-					}, 1500);
+					}, 5000);
 				}else
 					cookOrder(o);
 				return true;
@@ -262,7 +267,7 @@ public class CookAgent extends Agent {
 	}
 
 	private void orderMore(FoodData fd) {
-		print("called");
+		print("I have to order more raw food for " + fd.type);
 		invords.add(new InventoryOrder(fd.type, agents.get(marketPos), InventoryStatus.Pending, fd.limit - fd.amount + surplus));
 		stateChanged();
 	}
@@ -300,6 +305,8 @@ public class CookAgent extends Agent {
 			print(String.format("Change order for %d", co.tableNum));
 			o.choice = co.choice;
 			o.status = Status.pending;
+			o.t.cancel();
+			o.t = new Timer();
 		} else
 			print(String.format("Not change order for %d", co.tableNum));
 		co.waiter.msgDecisionChangeOrder(co.tableNum, co.decision);
@@ -340,6 +347,50 @@ public class CookAgent extends Agent {
 	
 	public void setWaiting(boolean waiting) {
 		this.waiting = waiting;
+	}
+	
+	public boolean getUnderLimit() {
+		return isUnderLimit;
+	}
+	
+	public void setUnderLimit(boolean limit) {
+		isUnderLimit = limit;
+		if (limit) {
+			inventory.clear();
+			inventory.put("Steak",new FoodData("Steak", 5, 4, 5));
+			inventory.put("Chicken",new FoodData("Chicken", 4, 4, 5));
+			inventory.put("Pizza",new FoodData("Pizza", 3, 4, 5));
+			inventory.put("Salad",new FoodData("Salad", 2, 4, 5));
+		}else {
+			inventory.clear();
+			inventory.put("Steak",new FoodData("Steak", 5, 10, 5));
+			inventory.put("Chicken",new FoodData("Chicken", 4, 10, 5));
+			inventory.put("Pizza",new FoodData("Pizza", 3, 10, 5));
+			inventory.put("Salad",new FoodData("Salad", 2, 10, 5));
+		}
+		stateChanged();
+	}
+	
+	public boolean getRunOutOfFood() {
+		return isRunOutOfFood;
+	}
+	
+	public void setRunOutOfFood(boolean RunOutOfFood) {
+		isRunOutOfFood = RunOutOfFood;
+		if (RunOutOfFood) {
+			inventory.clear();
+			inventory.put("Steak",new FoodData("Steak", 5, 1, 0));
+			inventory.put("Chicken",new FoodData("Chicken", 4, 0, 0));
+			inventory.put("Pizza",new FoodData("Pizza", 3, 0, 0));
+			inventory.put("Salad",new FoodData("Salad", 2, 0, 0));
+		}else {
+			inventory.clear();
+			inventory.put("Steak",new FoodData("Steak", 5, 10, 5));
+			inventory.put("Chicken",new FoodData("Chicken", 4, 10, 5));
+			inventory.put("Pizza",new FoodData("Pizza", 3, 10, 5));
+			inventory.put("Salad",new FoodData("Salad", 2, 10, 5));
+		}
+		stateChanged();
 	}
 }
 

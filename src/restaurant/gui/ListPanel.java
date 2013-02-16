@@ -89,7 +89,7 @@ public class ListPanel extends JPanel implements ActionListener{
 		synchronized (view) {
 			view.add(button);
 		}
-		System.out.println(pane.getSize());
+		//System.out.println(pane.getSize());
 		restPanel.addPerson(type, name);
 		validate();
 	}
@@ -102,7 +102,7 @@ public class ListPanel extends JPanel implements ActionListener{
 	private class ChangeButtonSize extends Thread {
 		public void run() {
 			while(checkButtons());
-			System.out.println("Exit");
+			//System.out.println("Exit");
 		}
 		private boolean checkButtons() {
 			boolean flag = false;
