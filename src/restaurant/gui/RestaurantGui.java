@@ -13,7 +13,7 @@ import java.io.File;
  * Contains the main frame and subsequent panels */
 public class RestaurantGui extends JFrame implements ActionListener{
 
-	private final int WINDOWX = 850;
+	private final int WINDOWX = 1050;
 	private final int WINDOWY = 450;
 
 	private RestaurantPanel restPanel = new RestaurantPanel(this);
@@ -24,6 +24,7 @@ public class RestaurantGui extends JFrame implements ActionListener{
 	private JCheckBox stateCB_2 = new JCheckBox();
 	private JCheckBox stateCB_3 = new JCheckBox();
 	private JCheckBox stateCB_4 = new JCheckBox();
+	private JCheckBox stateCB_5 = new JCheckBox();
 	private JButton addTable = new JButton("Add Table");
 
 	private Object currentPerson;
@@ -57,6 +58,8 @@ public class RestaurantGui extends JFrame implements ActionListener{
 		stateCB_3.addActionListener(this);
 		stateCB_4.setVisible(false);
 		stateCB_4.addActionListener(this);
+		stateCB_5.setVisible(false);
+		stateCB_5.addActionListener(this);
 
 		infoPanel.setLayout(new GridLayout(1,2, 30,0));
 		infoPanel.add(infoLabel);
@@ -64,6 +67,7 @@ public class RestaurantGui extends JFrame implements ActionListener{
 		infoPanel.add(stateCB_2);
 		infoPanel.add(stateCB_3);
 		infoPanel.add(stateCB_4);
+		infoPanel.add(stateCB_5);
 
 		getContentPane().add(restPanel);
 		getContentPane().add(addTable);
@@ -82,6 +86,7 @@ public class RestaurantGui extends JFrame implements ActionListener{
 		stateCB_2.setVisible(false);
 		stateCB_3.setVisible(false);
 		stateCB_4.setVisible(false);
+		stateCB_5.setVisible(false);
 		if(person instanceof CustomerAgent){
 			CustomerAgent customer = (CustomerAgent) person;
 			stateCB_1.setText("Hungry?");
@@ -99,6 +104,10 @@ public class RestaurantGui extends JFrame implements ActionListener{
 			stateCB_4.setVisible(true);
 			stateCB_4.setEnabled(true);
 			stateCB_4.setSelected(customer.isEnoughMoney()); 
+			stateCB_5.setText("Cheapest Order?");
+			stateCB_5.setVisible(true);
+			stateCB_5.setEnabled(true);
+			stateCB_5.setSelected(customer.getCheapestOrder()); 
 			infoLabel.setText(
 					"<html><pre>     Name: " + customer.getName() + " </pre></html>");
 
@@ -198,6 +207,11 @@ public class RestaurantGui extends JFrame implements ActionListener{
 			if (currentPerson instanceof CustomerAgent) {
 				CustomerAgent c = (CustomerAgent) currentPerson;
 				c.setEnoughMoney(stateCB_4.isSelected());
+			}
+		}else if (e.getSource() == stateCB_5) {
+			if (currentPerson instanceof CustomerAgent) {
+				CustomerAgent c = (CustomerAgent) currentPerson;
+				c.setCheapestOrder(stateCB_5.isSelected());
 			}
 		}
 

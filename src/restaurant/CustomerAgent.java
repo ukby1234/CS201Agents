@@ -26,6 +26,7 @@ public class CustomerAgent extends Agent {
 	private Double money;
 	private Double change;
 	private Double bill;
+	private Integer days;
 	private boolean NonNormLeave;
 	private boolean changeOrder = false;
 	private boolean isOrdered = false;
@@ -35,12 +36,13 @@ public class CustomerAgent extends Agent {
 	private boolean isHungry = false; //hack for gui
 	private boolean isWaiting = true;
 	private boolean isEnoughMoney = true;
+	private boolean isCheapestOrder = false;
 	public enum AgentState
 	{DoingNothing, WaitingInRestaurant, SeatedWithMenu, WaiterCalled, WaitingForFood, Eating, Paying, Leaving};
 	//{NO_ACTION,NEED_SEATED,NEED_DECIDE,NEED_ORDER,NEED_EAT,NEED_LEAVE};
 	private AgentState state = AgentState.DoingNothing;//The start state
 	public enum AgentEvent 
-	{gotHungry, beingSeated, decidedChoice, waiterToTakeOrder, foodDelivered, doneEating, gotBill, gotChange, hostFull, changeOrder};
+	{gotHungry, beingSeated, decidedChoice, waiterToTakeOrder, foodDelivered, doneEating, gotBill, gotChange, hostFull, changeOrder, WashingDishes};
 	List<AgentEvent> events = new ArrayList<AgentEvent>();
 
 	/** Constructor for CustomerAgent class 
@@ -157,6 +159,24 @@ public class CustomerAgent extends Agent {
 		changeOrder = change;
 		stateChanged();
 	}
+	
+	public void setCheapestOrder(boolean Cheapset) {
+		isCheapestOrder = Cheapset;
+		if (Cheapset) {
+			money = 6.99;
+		} else{
+			money = 100.0;
+			isEnoughMoney = true;
+			gui.invalidate();
+		}
+		stateChanged();
+	}
+	
+	public void msgWashingDishes(double days) {
+		this.days = (int)days;
+		events.add(AgentEvent.WashingDishes);
+		stateChanged();
+	}
 	/** Scheduler.  Determine what action is called for, and do it. */
 	protected boolean pickAndExecuteAnAction() {
 		if (events.isEmpty()) return false;
@@ -189,7 +209,7 @@ public class CustomerAgent extends Agent {
 			}
 		}
 		if (state == AgentState.WaiterCalled) {
-			print("Here");
+			//print("Here");
 			if (event == AgentEvent.waiterToTakeOrder)	{
 				if(changeOrder && !isOrdered) {
 					if(menu.choices.isEmpty()) {
@@ -233,6 +253,10 @@ public class CustomerAgent extends Agent {
 			if (event == AgentEvent.gotChange) {
 				gotChange();
 				state = AgentState.DoingNothing;
+				return true;
+			}
+			if (event == AgentEvent.WashingDishes) {
+				washDishes();
 				return true;
 			}
 		}
@@ -300,8 +324,18 @@ public class CustomerAgent extends Agent {
 			state = AgentState.DoingNothing;
 			events.clear();
 			waiter.msgHereIsMyChoice(this, "");
+			stateChanged();
 			return;
 		}
+		if (isCheapestOrder) {
+			print("Ordering the " + "Salad");
+			waiter.msgHereIsMyChoice(this, "Salad");
+			menu.choices.remove("Salad");
+			isOrdered = true;
+			stateChanged();
+			return;
+		}
+			
 		Object choices[] = menu.choices.keySet().toArray();
 		String choice = (String)choices[(int)(Math.random() * choices.length)];
 		if (changeOrder && isOrdered) {
@@ -399,6 +433,16 @@ public class CustomerAgent extends Agent {
 		state = AgentState.WaiterCalled;
 		stateChanged();
 	}
+	
+	private void washDishes() {
+		print(String.format("Washing dishes for %d days (%d milliseconds)", days, days * 100));
+		timer.schedule(new TimerTask() {
+			public void run() {
+				state = AgentState.DoingNothing;
+			}
+		}, days * 100);
+		
+	}
 
 	// *** EXTRA ***
 
@@ -466,6 +510,10 @@ public class CustomerAgent extends Agent {
 	
 	public boolean getChangeOrder() {
 		return changeOrder;
+	}
+	
+	public boolean getCheapestOrder() {
+		return isCheapestOrder;
 	}
 
 }
