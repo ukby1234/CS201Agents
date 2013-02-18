@@ -5,7 +5,7 @@ Normative Scenarios:
 3. Multiple customers, multiple waiters, cashier operating normally, no running out of food. -- Add multiple customers and waiters, no GUI check boxes hit
 4. Waiter wants to go on break, he's told it's ok, goes on break when he finished all his current customers; goes on break, then goes off break. - On waiter buttons, check the On Break, and check the Allow Break
 Non-normative scenarios:
-1. Customer orders, food has run out, cook has obviously ordered but food hasn't arrived, Customer makes new choice. -- On Cook buttons, check the Running out of food. If the customer has random the choice which the cook has, restart the application to select again. 
+1. Customer orders, food has run out, cook has obviously ordered but food hasn't arrived, Customer makes new choice. -- On Cook buttons, check the Running out of food. The delivery will takes much longer than normative scenarios. If the customer has random the choice which the cook has, restart the application to select again. 
 2. Cook orders from favorite Market, but is told they can't fulfill his order; must order from one of his backup markets. -- Click the market button, uncheck Have enough inventory, and then check Inventory below limit in the cook button
 3. Customer changes his order; (1) waiter says it's ok to change if it is ok, or (2) waiter tells him it's too late if it is too late. -- check Change Order? in the customer button. If Wait before cooking is checked in the cook button, the change order will be allowed. Otherwise, it won't. 
 4.  Customer doesn't have enough money to order anything and leaves. -- Uncheck the Enough Money? and Waiting? in the customer buttons
