@@ -49,7 +49,7 @@ public class MarketAgent extends Agent {
 		}
 		print(String.format("Delivering %s in %d amount(1000 millisecondes)", o.choice, o.amount));
 		try {
-			Thread.sleep(1000);
+			Thread.sleep(o.cook.getRunOutOfFood() ? 100000 : 1000);
 		}catch(InterruptedException e) {}
 		o.cook.msgDelivery(o.choice, o.amount);
 		inventory.get(o.choice).amount -= o.amount;

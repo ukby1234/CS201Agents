@@ -378,10 +378,10 @@ public class CookAgent extends Agent {
 		isRunOutOfFood = RunOutOfFood;
 		if (RunOutOfFood) {
 			inventory.clear();
-			inventory.put("Steak",new FoodData("Steak", 5, 1, 0));
-			inventory.put("Chicken",new FoodData("Chicken", 4, 0, 0));
-			inventory.put("Pizza",new FoodData("Pizza", 3, 0, 0));
-			inventory.put("Salad",new FoodData("Salad", 2, 0, 0));
+			inventory.put("Steak",new FoodData("Steak", 5, 1, 5));
+			inventory.put("Chicken",new FoodData("Chicken", 4, 0, 5));
+			inventory.put("Pizza",new FoodData("Pizza", 3, 0, 5));
+			inventory.put("Salad",new FoodData("Salad", 2, 0, 5));
 		}else {
 			inventory.clear();
 			inventory.put("Steak",new FoodData("Steak", 5, 10, 5));
