@@ -22,7 +22,6 @@ public class CookAgent extends Agent {
 	private List<InventoryOrder> invords = new ArrayList<InventoryOrder>();
 	private List<MarketAgent> agents = new ArrayList<MarketAgent>();
 	private final int surplus = 10;
-	private int marketPos = 0;
 	public enum InventoryStatus {Pending, Ordered, Received, Done};
 	public enum Status {pending, waiting, cooking, done}; // order status
 	private boolean waiting = false;
@@ -112,10 +111,10 @@ public class CookAgent extends Agent {
 	}
 
 	private class InventoryOrder {
-		String type;
-		MarketAgent market;
-		InventoryStatus status;
-		int amount;
+		public String type;
+		public MarketAgent market;
+		public InventoryStatus status;
+		public int amount;
 		public InventoryOrder(String type, MarketAgent market, InventoryStatus status, int amount) {
 			this.type = type;
 			this.market = market;
@@ -268,7 +267,7 @@ public class CookAgent extends Agent {
 
 	private void orderMore(FoodData fd) {
 		print("I have to order more raw food for " + fd.type);
-		invords.add(new InventoryOrder(fd.type, agents.get(marketPos), InventoryStatus.Pending, fd.limit - fd.amount + surplus));
+		invords.add(new InventoryOrder(fd.type, agents.get(0), InventoryStatus.Pending, fd.limit - fd.amount + surplus));
 		stateChanged();
 	}
 
@@ -281,8 +280,8 @@ public class CookAgent extends Agent {
 
 	private void addToInventory(InventoryOrder o) {
 		if (o.amount == 0) {
+			agents.remove(o.market);
 			o.status = InventoryStatus.Done;
-			marketPos = (marketPos + 1) % agents.size();
 		}
 		else {
 			inventory.get(o.type).amount += o.amount;

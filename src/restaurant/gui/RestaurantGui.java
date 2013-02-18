@@ -106,7 +106,7 @@ public class RestaurantGui extends JFrame implements ActionListener{
 			stateCB_4.setSelected(customer.isEnoughMoney()); 
 			stateCB_5.setText("Cheapest Order?");
 			stateCB_5.setVisible(true);
-			stateCB_5.setEnabled(true);
+			stateCB_5.setEnabled(customer.isEnoughMoney());
 			stateCB_5.setSelected(customer.getCheapestOrder()); 
 			infoLabel.setText(
 					"<html><pre>     Name: " + customer.getName() + " </pre></html>");
@@ -207,6 +207,7 @@ public class RestaurantGui extends JFrame implements ActionListener{
 			if (currentPerson instanceof CustomerAgent) {
 				CustomerAgent c = (CustomerAgent) currentPerson;
 				c.setEnoughMoney(stateCB_4.isSelected());
+				stateCB_5.setEnabled(c.isEnoughMoney());
 			}
 		}else if (e.getSource() == stateCB_5) {
 			if (currentPerson instanceof CustomerAgent) {
