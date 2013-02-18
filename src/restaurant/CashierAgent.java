@@ -83,7 +83,7 @@ public class CashierAgent extends Agent {
 			c.customer.msgHereIsChange(c.payment - c.bill.price);
 		else {
 			print("Fuck You!");
-			c.customer.msgWashingDishes(c.bill.price - c.payment);
+			c.customer.msgWashingDishes(c.bill.price - c.payment + 1);
 		}
 		c.bill.status = BillStatus.Cleared;
 		stateChanged();
