@@ -2,12 +2,13 @@ package restaurant;
 
 import agent.Agent;
 import java.util.*;
-public class CashierAgent extends Agent {
+import restaurant.interfaces.*;
+
+public class CashierAgent extends Agent implements Cashier{
 	enum BillStatus {Ready, Pending, Received, Cleared};
 	List<MyCustomer> customers = new ArrayList<MyCustomer>();
 	List<MyMarket> markets = new ArrayList<MyMarket>();
 	Menu menu;
-	WaiterAgent waiter;
 	String name;
 	Timer t = new Timer();
 	public CashierAgent(String name) {
@@ -15,7 +16,7 @@ public class CashierAgent extends Agent {
 		menu = new Menu();
 	}
 	//Messaging
-	void msgMakeBill(WaiterAgent wtr, CustomerAgent cta, String choice) {
+	public void msgMakeBill(Waiter wtr, Customer cta, String choice) {
 		//print("Making Bill for " + cta.getName());
 		//System.out.println(menu.choices.get(choice));
 		Bill bill = new Bill(menu.choices.get(choice), BillStatus.Ready);
@@ -31,7 +32,7 @@ public class CashierAgent extends Agent {
 		stateChanged();
 	}
 	
-	void msgHereIsPayment(CustomerAgent cta, Double payment) {
+	public void msgHereIsPayment(Customer cta, Double payment) {
 		for (MyCustomer c : customers) {
 			if (c.customer.equals(cta)) {
 				c.bill.status = BillStatus.Received;
@@ -41,7 +42,7 @@ public class CashierAgent extends Agent {
 		stateChanged();
 	}
 	
-	void msgHereIsBill(MarketAgent mka, Double amount) {
+	public void msgHereIsBill(Market mka, Double amount) {
 		markets.add(new MyMarket(mka, BillStatus.Ready, amount));
 		stateChanged();
 	}
@@ -96,11 +97,11 @@ public class CashierAgent extends Agent {
 		stateChanged();
 	}
 	private class MyCustomer {
-		CustomerAgent customer;
-		WaiterAgent waiter;
+		Customer customer;
+		Waiter waiter;
 		Bill bill;
 		Double payment;
-		public MyCustomer(CustomerAgent cta, WaiterAgent wtr, Bill bill) {
+		public MyCustomer(Customer cta, Waiter wtr, Bill bill) {
 			customer = cta;
 			waiter = wtr;
 			this.bill = bill;
@@ -118,10 +119,10 @@ public class CashierAgent extends Agent {
 	}
 	
 	private class MyMarket {
-		MarketAgent market;
+		Market market;
 		BillStatus status;
 		Double bill;
-		public MyMarket(MarketAgent market, BillStatus status, Double bill) {
+		public MyMarket(Market market, BillStatus status, Double bill) {
 			this.market = market;
 			this.status = status;
 			this.bill = bill;

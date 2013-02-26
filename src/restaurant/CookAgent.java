@@ -6,6 +6,7 @@ import java.util.TimerTask;
 import java.util.*;
 import restaurant.layoutGUI.*;
 import java.awt.Color;
+import restaurant.interfaces.*;
 
 
 /** Cook agent for restaurant.
@@ -13,14 +14,14 @@ import java.awt.Color;
  *  and simulates cooking them.
  *  Interacts with waiters only.
  */
-public class CookAgent extends Agent {
+public class CookAgent extends Agent implements Cook{
 
 	//List of all the orders
 	private List<Order> orders = new ArrayList<Order>();
 	private List<ChangeOrder> changeOrders = new ArrayList<ChangeOrder>();
 	private Map<String,FoodData> inventory = new HashMap<String,FoodData>();
 	private List<InventoryOrder> invords = new ArrayList<InventoryOrder>();
-	private List<MarketAgent> agents = new ArrayList<MarketAgent>();
+	private List<Market> agents = new ArrayList<Market>();
 	private final int surplus = 10;
 	public enum InventoryStatus {Pending, Ordered, Received, Done};
 	public enum Status {pending, waiting, cooking, done}; // order status
@@ -70,7 +71,7 @@ public class CookAgent extends Agent {
 	 *  cooktime and status.
 	 */
 	private class Order {
-		public WaiterAgent waiter;
+		public Waiter waiter;
 		public int tableNum;
 		public String choice;
 		public Status status;
@@ -82,7 +83,7 @@ public class CookAgent extends Agent {
 		 * @param tableNum identification number for the table
 		 * @param choice type of food to be cooked 
 		 */
-		public Order(WaiterAgent waiter, int tableNum, String choice){
+		public Order(Waiter waiter, int tableNum, String choice){
 			this.waiter = waiter;
 			this.choice = choice;
 			this.tableNum = tableNum;
@@ -98,11 +99,11 @@ public class CookAgent extends Agent {
 	}
 
 	private class ChangeOrder {
-		public WaiterAgent waiter;
+		public Waiter waiter;
 		public int tableNum;
 		public String choice;
 		public boolean decision;
-		public ChangeOrder(WaiterAgent waiter, int tableNum, String choice) {
+		public ChangeOrder(Waiter waiter, int tableNum, String choice) {
 			this.waiter = waiter;
 			this.tableNum = tableNum;
 			this.choice = choice;
@@ -112,10 +113,10 @@ public class CookAgent extends Agent {
 
 	private class InventoryOrder {
 		public String type;
-		public MarketAgent market;
+		public Market market;
 		public InventoryStatus status;
 		public int amount;
-		public InventoryOrder(String type, MarketAgent market, InventoryStatus status, int amount) {
+		public InventoryOrder(String type, Market market, InventoryStatus status, int amount) {
 			this.type = type;
 			this.market = market;
 			this.status = status;
@@ -133,7 +134,7 @@ public class CookAgent extends Agent {
 	 * @param tableNum identification number for the table
 	 * @param choice type of food to be cooked
 	 */
-	public void msgHereIsAnOrder(WaiterAgent waiter, int tableNum, String choice){
+	public void msgHereIsAnOrder(Waiter waiter, int tableNum, String choice){
 		for (Order o : orders)
 			if (o.tableNum == tableNum) {
 				print("found");
@@ -161,7 +162,7 @@ public class CookAgent extends Agent {
 		stateChanged();
 	}
 
-	public void msgchangeOrder(WaiterAgent waiter, int tableNum, String choice) {
+	public void msgchangeOrder(Waiter waiter, int tableNum, String choice) {
 		print(String.format("Cook received %d change order to %s", tableNum, choice));
 		changeOrders.add(new ChangeOrder(waiter, tableNum, choice));
 		stateChanged();
@@ -319,7 +320,7 @@ public class CookAgent extends Agent {
 		return name;
 	}
 
-	public void addMarket(MarketAgent market) {
+	public void addMarket(Market market) {
 		agents.add(market);
 	}
 	private void DoCooking(final Order order){

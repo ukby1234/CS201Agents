@@ -2,6 +2,7 @@ package restaurant;
 
 import restaurant.WaiterAgent.CustomerState;
 import restaurant.gui.RestaurantGui;
+import restaurant.interfaces.*;
 import restaurant.layoutGUI.*;
 import agent.Agent;
 import java.util.*;
@@ -12,15 +13,15 @@ import java.awt.Color;
  * Randomly chooses a menu item and simulates eating 
  * when the food arrives. 
  * Interacts with a waiter only */
-public class CustomerAgent extends Agent {
+public class CustomerAgent extends Agent implements Customer{
 	private String name;
 	private int hungerLevel = 5;  // Determines length of meal
 	private RestaurantGui gui;
 
 	// ** Agent connections **
-	private HostAgent host;
-	private WaiterAgent waiter;
-	private CashierAgent cashier;
+	private Host host;
+	private Waiter waiter;
+	private Cashier cashier;
 	Restaurant restaurant;
 	private Menu menu;
 	private Double money;
@@ -84,7 +85,7 @@ public class CustomerAgent extends Agent {
 	/** Waiter sends this message so the customer knows to sit down 
 	 * @param waiter the waiter that sent the message
 	 * @param menu a reference to a menu */
-	public void msgFollowMeToTable(WaiterAgent waiter, Menu menu) {
+	public void msgFollowMeToTable(Waiter waiter, Menu menu) {
 		this.menu = menu;
 		this.waiter = waiter;
 		print("Received msgFollowMeToTable from" + waiter);
@@ -448,7 +449,7 @@ public class CustomerAgent extends Agent {
 
 	/** establish connection to host agent. 
 	 * @param host reference to the host */
-	public void setHost(HostAgent host) {
+	public void setHost(Host host) {
 		this.host = host;
 	}
 
@@ -504,7 +505,7 @@ public class CustomerAgent extends Agent {
 		return "customer " + getName();
 	}
 
-	public void setCashier(CashierAgent cashier) {
+	public void setCashier(Cashier cashier) {
 		this.cashier = cashier;
 	}
 	

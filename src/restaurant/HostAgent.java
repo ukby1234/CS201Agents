@@ -2,7 +2,7 @@ package restaurant;
 
 import agent.Agent;
 import java.util.*;
-
+import restaurant.interfaces.*;
 
 /** Host agent for restaurant.
  *  Keeps a list of all the waiters and tables.
@@ -10,7 +10,7 @@ import java.util.*;
  *  keeps a list of waiting customers.
  *  Interacts with customers and waiters.
  */
-public class HostAgent extends Agent {
+public class HostAgent extends Agent implements Host{
 
 	/** Private class storing all the information for each table,
 	 * including table number and state. */
@@ -29,22 +29,22 @@ public class HostAgent extends Agent {
 
 	/** Private class to hold waiter information and state */
 	private class MyWaiter {
-		public WaiterAgent wtr;
+		public Waiter wtr;
 		public boolean working = true;
 		public boolean pending = false;
 
 		/** Constructor for MyWaiter class
 		 * @param waiter
 		 */
-		public MyWaiter(WaiterAgent waiter){
+		public MyWaiter(Waiter waiter){
 			wtr = waiter;
 		}
 	}
 
 	private class MyCustomer {
-		public CustomerAgent customer;
+		public Customer customer;
 		public CustomerState state;
-		public MyCustomer(CustomerAgent wtr, CustomerState state) {
+		public MyCustomer(Customer wtr, CustomerState state) {
 			customer = wtr;
 			this.state = state;
 		}
@@ -86,7 +86,7 @@ public class HostAgent extends Agent {
 
 	/** Customer sends this message to be added to the wait list 
 	 * @param customer customer that wants to be added */
-	public void msgIWantToEat(CustomerAgent customer){
+	public void msgIWantToEat(Customer customer){
 		//print("Here is Customer");
 		waitList.add(new MyCustomer(customer, CustomerState.Pending));
 		stateChanged();
@@ -100,7 +100,7 @@ public class HostAgent extends Agent {
 		stateChanged();
 	}
 
-	public void msgCanIOnBreak(WaiterAgent w) {
+	public void msgCanIOnBreak(Waiter w) {
 		print(String.format("%s asking for break", w.getName()));
 		for (MyWaiter waiter : waiters) {
 			if (waiter.wtr.equals(w)) {
@@ -111,7 +111,7 @@ public class HostAgent extends Agent {
 		stateChanged();
 	}
 
-	public void msgResumeWork(WaiterAgent w) {
+	public void msgResumeWork(Waiter w) {
 		print(w.getName() + " resuming work");
 		for (MyWaiter waiter : waiters) {
 			if (waiter.wtr.equals(w))
@@ -121,7 +121,7 @@ public class HostAgent extends Agent {
 		stateChanged();
 	}
 
-	public void msgStayOrLeave(CustomerAgent c, boolean choice) {
+	public void msgStayOrLeave(Customer c, boolean choice) {
 		if (choice)
 			print(c.getName() + " waiting");
 		else
@@ -258,7 +258,7 @@ public class HostAgent extends Agent {
 	/** Hack to enable the host to know of all possible waiters 
 	 * @param waiter new waiter to be added to list
 	 */
-	public void setWaiter(WaiterAgent waiter){
+	public void setWaiter(Waiter waiter){
 		waiters.add(new MyWaiter(waiter));
 		stateChanged();
 	}

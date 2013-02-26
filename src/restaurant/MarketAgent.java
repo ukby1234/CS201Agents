@@ -2,10 +2,12 @@ package restaurant;
 
 import agent.Agent;
 import java.util.*;
-public class MarketAgent extends Agent {
+import restaurant.interfaces.*;
+
+public class MarketAgent extends Agent implements Market{
 
 	String name;
-	CashierAgent cashier;
+	Cashier cashier;
 	Map<String, FoodData> inventory = new HashMap<String, FoodData>();
 	List<MyOrder> orders = new ArrayList<MyOrder>();
 	enum OrderStatus {Received, Delivered, Paying, Failed};
@@ -14,12 +16,12 @@ public class MarketAgent extends Agent {
 		this.name = name;
 	}
 	//Messaging
-	void msgOrder(CookAgent cook, String choice, int amount) {
+	public void msgOrder(Cook cook, String choice, int amount) {
 		print(String.format("Getting Order From %s %s %d", cook.getName(), choice, amount));
 		orders.add(new MyOrder(cook, choice, OrderStatus.Received, amount));
 		stateChanged();
 	}
-	void msgHereIsPayment(Double amount) {
+	public void msgHereIsPayment(Double amount) {
 		print(String.format("Here Is Payment: %.2f", amount));
 		stateChanged();
 	}
@@ -76,11 +78,11 @@ public class MarketAgent extends Agent {
 	}
 	
 	private class MyOrder {
-		CookAgent cook;
+		Cook cook;
 		String choice;
 		OrderStatus status;
 		Integer amount;
-		public MyOrder(CookAgent cook, String choice, OrderStatus status, int amount) {
+		public MyOrder(Cook cook, String choice, OrderStatus status, int amount) {
 			this.cook = cook;
 			this.choice = choice;
 			this.status = status;
@@ -89,7 +91,7 @@ public class MarketAgent extends Agent {
 	}
 	
 	//Methods
-	public void setCashier(CashierAgent cashier) {
+	public void setCashier(Cashier cashier) {
 		this.cashier = cashier;
 	}
 	
