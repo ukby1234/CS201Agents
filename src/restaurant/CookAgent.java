@@ -17,11 +17,11 @@ import restaurant.interfaces.*;
 public class CookAgent extends Agent implements Cook{
 
 	//List of all the orders
-	private List<Order> orders = new ArrayList<Order>();
-	private List<ChangeOrder> changeOrders = new ArrayList<ChangeOrder>();
-	private Map<String,FoodData> inventory = new HashMap<String,FoodData>();
-	private List<InventoryOrder> invords = new ArrayList<InventoryOrder>();
-	private List<Market> agents = new ArrayList<Market>();
+	private List<Order> orders = Collections.synchronizedList(new ArrayList<Order>());
+	private List<ChangeOrder> changeOrders = Collections.synchronizedList(new ArrayList<ChangeOrder>());
+	private Map<String,FoodData> inventory = Collections.synchronizedMap(new HashMap<String,FoodData>());
+	private List<InventoryOrder> invords = Collections.synchronizedList(new ArrayList<InventoryOrder>());
+	private List<Market> agents = Collections.synchronizedList(new ArrayList<Market>());
 	private final int surplus = 10;
 	public enum InventoryStatus {Pending, Ordered, Received, Done};
 	public enum Status {pending, waiting, cooking, done}; // order status
@@ -135,15 +135,17 @@ public class CookAgent extends Agent implements Cook{
 	 * @param choice type of food to be cooked
 	 */
 	public void msgHereIsAnOrder(Waiter waiter, int tableNum, String choice){
-		for (Order o : orders)
-			if (o.tableNum == tableNum) {
-				print("found");
-				o.waiter = waiter;
-				o.choice = choice;
-				o.status = Status.pending;
-				stateChanged();
-				return;
-			}
+		synchronized (orders) {
+			for (Order o : orders) 
+				if (o.tableNum == tableNum) {
+					print("found");
+					o.waiter = waiter;
+					o.choice = choice;
+					o.status = Status.pending;
+					stateChanged();
+					return;
+				}
+		}
 		orders.add(new Order(waiter, tableNum, choice));
 		stateChanged();
 	}
@@ -153,10 +155,12 @@ public class CookAgent extends Agent implements Cook{
 			print(type + " deliver fails");
 		else
 			print(String.format("%s delivers %d", type, amount));
-		for (InventoryOrder o : invords) {
-			if (o.type.equals(type) && o.status == InventoryStatus.Ordered) {
-				o.status = InventoryStatus.Received;
-				o.amount = amount;
+		synchronized (invords) {
+			for (InventoryOrder o : invords) {
+				if (o.type.equals(type) && o.status == InventoryStatus.Ordered) {
+					o.status = InventoryStatus.Received;
+					o.amount = amount;
+				}
 			}
 		}
 		stateChanged();
@@ -171,73 +175,75 @@ public class CookAgent extends Agent implements Cook{
 
 	/** Scheduler.  Determine what action is called for, and do it. */
 	protected boolean pickAndExecuteAnAction() {
-		if (!changeOrders.isEmpty()) {
-			//print("Here");
-			ChangeOrder co = changeOrders.remove(0);
-			for (Order o : orders) {
-				if (o.tableNum == co.tableNum) {
-					if(o.status == Status.pending || o.status == Status.waiting) {
-						//print("Here");
-						co.decision = true;
-					}
-				}
-				changeOrder(o, co);
-			}
-			return true;
-		}
-		for (Order o : orders) {
-			if (inventory.get(o.choice).amount <= 0 && o.status == Status.pending) {
-				runOutOfFood(o);
-				return true;
-			}
-		}
-
-		for (String type : inventory.keySet()) {
-			FoodData fd = inventory.get(type);
-			boolean flag = true;
-			for (InventoryOrder o : invords) {
-				if (o.type.equals(fd.type) && o.status != InventoryStatus.Done)
-					flag = false;
-
-			}
-			if (fd.amount < fd.limit && flag) {
-				orderMore(fd);
-				return true;
-			}
-		}
-		for (InventoryOrder o : invords) {
-			if (o.status == InventoryStatus.Pending) {
-				requestMarket(o);
-				return true;
-			}
-			if (o.status == InventoryStatus.Received) {
-				addToInventory(o);
-				return true;
-			}
-		}
-		//If there exists an order o whose status is done, place o.
-		for(Order o:orders){
-			if(o.status == Status.done){
-				placeOrder(o);
-				return true;
-			}
-		}
-		//If there exists an order o whose status is pending, cook o.
-		for(final Order o:orders){
-			if(o.status == Status.pending){
-				if(waiting) {
-					print("Waiting 5000 milliseconds");
-					o.status = Status.waiting;
-					o.t.schedule(new TimerTask() {
-						public void run() {
-							cookOrder(o);
+		try {
+			if (!changeOrders.isEmpty()) {
+				//print("Here");
+				ChangeOrder co = changeOrders.remove(0);
+				for (Order o : orders) {
+					if (o.tableNum == co.tableNum) {
+						if(o.status == Status.pending || o.status == Status.waiting) {
+							//print("Here");
+							co.decision = true;
 						}
-					}, 5000);
-				}else
-					cookOrder(o);
+					}
+					changeOrder(o, co);
+				}
 				return true;
 			}
-		}
+			for (Order o : orders) {
+				if (inventory.get(o.choice).amount <= 0 && o.status == Status.pending) {
+					runOutOfFood(o);
+					return true;
+				}
+			}
+
+			for (String type : inventory.keySet()) {
+				FoodData fd = inventory.get(type);
+				boolean flag = true;
+				for (InventoryOrder o : invords) {
+					if (o.type.equals(fd.type) && o.status != InventoryStatus.Done)
+						flag = false;
+
+				}
+				if (fd.amount < fd.limit && flag) {
+					orderMore(fd);
+					return true;
+				}
+			}
+			for (InventoryOrder o : invords) {
+				if (o.status == InventoryStatus.Pending) {
+					requestMarket(o);
+					return true;
+				}
+				if (o.status == InventoryStatus.Received) {
+					addToInventory(o);
+					return true;
+				}
+			}
+			//If there exists an order o whose status is done, place o.
+			for(Order o:orders){
+				if(o.status == Status.done){
+					placeOrder(o);
+					return true;
+				}
+			}
+			//If there exists an order o whose status is pending, cook o.
+			for(final Order o:orders){
+				if(o.status == Status.pending){
+					if(waiting) {
+						print("Waiting 5000 milliseconds");
+						o.status = Status.waiting;
+						o.t.schedule(new TimerTask() {
+							public void run() {
+								cookOrder(o);
+							}
+						}, 5000);
+					}else
+						cookOrder(o);
+					return true;
+				}
+			}
+		}catch (ConcurrentModificationException e) {return true;}
 
 		//we have tried all our rules (in this case only one) and found
 		//nothing to do. So return false to main loop of abstract agent
@@ -311,7 +317,7 @@ public class CookAgent extends Agent implements Cook{
 			print(String.format("Not change order for %d", co.tableNum));
 		co.waiter.msgDecisionChangeOrder(co.tableNum, co.decision);
 		stateChanged();
-			
+
 	}
 	// *** EXTRA -- all the simulation routines***
 
@@ -340,19 +346,19 @@ public class CookAgent extends Agent implements Cook{
 		print("Order finished: " + order + " for table:" + (order.tableNum+1));
 		order.food.placeOnCounter();
 	}
-	
+
 	public boolean getWaiting() {
 		return waiting;
 	}
-	
+
 	public void setWaiting(boolean waiting) {
 		this.waiting = waiting;
 	}
-	
+
 	public boolean getUnderLimit() {
 		return isUnderLimit;
 	}
-	
+
 	public void setUnderLimit(boolean limit) {
 		isUnderLimit = limit;
 		if (limit) {
@@ -370,11 +376,11 @@ public class CookAgent extends Agent implements Cook{
 		}
 		stateChanged();
 	}
-	
+
 	public boolean getRunOutOfFood() {
 		return isRunOutOfFood;
 	}
-	
+
 	public void setRunOutOfFood(boolean RunOutOfFood) {
 		isRunOutOfFood = RunOutOfFood;
 		if (RunOutOfFood) {

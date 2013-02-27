@@ -102,10 +102,12 @@ public class HostAgent extends Agent implements Host{
 
 	public void msgCanIOnBreak(Waiter w) {
 		print(String.format("%s asking for break", w.getName()));
-		for (MyWaiter waiter : waiters) {
-			if (waiter.wtr.equals(w)) {
-				print("found");
-				waiter.pending = true;
+		synchronized (waiters) {
+			for (MyWaiter waiter : waiters) {
+				if (waiter.wtr.equals(w)) {
+					print("found");
+					waiter.pending = true;
+				}
 			}
 		}
 		stateChanged();
@@ -113,10 +115,12 @@ public class HostAgent extends Agent implements Host{
 
 	public void msgResumeWork(Waiter w) {
 		print(w.getName() + " resuming work");
-		for (MyWaiter waiter : waiters) {
-			if (waiter.wtr.equals(w))
-				waiter.pending = false;
-			waiter.working = true;
+		synchronized (waiters) {
+			for (MyWaiter waiter : waiters) {
+				if (waiter.wtr.equals(w))
+					waiter.pending = false;
+				waiter.working = true;
+			}
 		}
 		stateChanged();
 	}
@@ -127,9 +131,11 @@ public class HostAgent extends Agent implements Host{
 		else
 			print(c.getName() + " leaving");
 		MyCustomer temp = null;
-		for (MyCustomer cu : waitList) {
-			if (cu.customer.equals(c)) 
-				temp = cu;
+		synchronized (waitList) {
+			for (MyCustomer cu : waitList) {
+				if (cu.customer.equals(c)) 
+					temp = cu;
+			}
 		}
 		if (temp != null && choice)
 			temp.state = CustomerState.Waiting;
@@ -142,66 +148,67 @@ public class HostAgent extends Agent implements Host{
 	/** Scheduler.  Determine what action is called for, and do it. */
 	protected boolean pickAndExecuteAnAction() {
 		//print("Here");
-		for (MyWaiter waiter : waiters) {
-			if (waiter.pending) {
-				decideOnBreak(waiter);
-				return true;
+		try {
+			for (MyWaiter waiter : waiters) {
+				if (waiter.pending) {
+					decideOnBreak(waiter);
+					return true;
+				}
 			}
-		}
-		boolean full = true;
-		boolean onBreak = true;
-		for (MyWaiter w : waiters) {
-			if (w.working)
-				onBreak = false;
-		}
-		for (int i = 0; i < nTables; i++)
-			if (!tables[i].occupied) {
-				full = false;
-				break;
+			boolean full = true;
+			boolean onBreak = true;
+			for (MyWaiter w : waiters) {
+				if (w.working)
+					onBreak = false;
 			}
-		//print("" + waiters.size());
-		//print("" + full);
-		//print("" + onBreak);
-		if (full || onBreak) {
+			for (int i = 0; i < nTables; i++)
+				if (!tables[i].occupied) {
+					full = false;
+					break;
+				}
+			//print("" + waiters.size());
+			//print("" + full);
+			//print("" + onBreak);
+			if (full || onBreak) {
+				for (MyCustomer c : waitList) {
+					if (c.state == CustomerState.Pending) {
+						tellCustomerFull(c);
+						return true;
+					}
+				}
+			}
+
 			for (MyCustomer c : waitList) {
-				if (c.state == CustomerState.Pending) {
+				if (c.state == CustomerState.Pending && waitList.indexOf(c) >= nTables) {
 					tellCustomerFull(c);
 					return true;
 				}
 			}
-		}
-		
-		for (MyCustomer c : waitList) {
-			if (c.state == CustomerState.Pending && waitList.indexOf(c) >= nTables) {
-				tellCustomerFull(c);
-				return true;
-			}
-		}
-		if(!waitList.isEmpty() && !waiters.isEmpty() && !onBreak){
-			synchronized(waiters){
-				//Finds the next waiter that is working
-				while(!waiters.get(nextWaiter).working){
-					nextWaiter = (nextWaiter+1)%waiters.size();
-				}
-			}
-			print("picking waiter number:"+nextWaiter);
-			//Then runs through the tables and finds the first unoccupied 
-			//table and tells the waiter to sit the first customer at that table
-			for(int i=0; i < nTables; i++){
-
-				if(!tables[i].occupied){
-					synchronized(waitList){
-						for (MyCustomer c : waitList)
-							if (c.state != CustomerState.Deciding) {
-								tellWaiterToSitCustomerAtTable(waiters.get(nextWaiter), c, i);
-								break;
-							}
+			if(!waitList.isEmpty() && !waiters.isEmpty() && !onBreak){
+				synchronized(waiters){
+					//Finds the next waiter that is working
+					while(!waiters.get(nextWaiter).working){
+						nextWaiter = (nextWaiter+1)%waiters.size();
 					}
-					return true;
+				}
+				print("picking waiter number:"+nextWaiter);
+				//Then runs through the tables and finds the first unoccupied 
+				//table and tells the waiter to sit the first customer at that table
+				for(int i=0; i < nTables; i++){
+
+					if(!tables[i].occupied){
+						synchronized(waitList){
+							for (MyCustomer c : waitList)
+								if (c.state != CustomerState.Deciding) {
+									tellWaiterToSitCustomerAtTable(waiters.get(nextWaiter), c, i);
+									break;
+								}
+						}
+						return true;
+					}
 				}
 			}
-		}
-
+		}catch (ConcurrentModificationException e) {return true;}
 		//we have tried all our rules (in this case only one) and found
 		//nothing to do. So return false to main loop of abstract agent
 		//and wait.

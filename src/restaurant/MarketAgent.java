@@ -8,8 +8,8 @@ public class MarketAgent extends Agent implements Market{
 
 	String name;
 	Cashier cashier;
-	Map<String, FoodData> inventory = new HashMap<String, FoodData>();
-	List<MyOrder> orders = new ArrayList<MyOrder>();
+	Map<String, FoodData> inventory = Collections.synchronizedMap(new HashMap<String, FoodData>());
+	List<MyOrder> orders = Collections.synchronizedList(new ArrayList<MyOrder>());
 	enum OrderStatus {Received, Delivered, Paying, Failed};
 	boolean isEnoughInventory = true;
 	public MarketAgent(String name) {
@@ -28,15 +28,31 @@ public class MarketAgent extends Agent implements Market{
 	//Scheduler
 	@Override
 	protected boolean pickAndExecuteAnAction() {
-		for (MyOrder o : orders){
-			if (o.status == OrderStatus.Received) {
-				deliverOrder(o);			
-				return true;
+		MyOrder order = null;
+		synchronized (orders) {
+			for (MyOrder o : orders){
+				if (o.status == OrderStatus.Received) {
+					order = o;
+					break;
+				}
 			}
-			if (o.status == OrderStatus.Delivered) {
-				makeBill(o);
-				return true;
+		}
+		if (order != null) {
+			deliverOrder(order);			
+			return true;
+		}
+		order = null;
+		synchronized (orders) {
+			for (MyOrder o : orders){
+				if (o.status == OrderStatus.Delivered) {
+					order = o;
+					break;
+				}
 			}
+		}
+		if (order != null) {
+			makeBill(order);			
+			return true;
 		}
 		return false;
 	}
@@ -76,7 +92,7 @@ public class MarketAgent extends Agent implements Market{
 			this.amount = amount;
 		}
 	}
-	
+
 	private class MyOrder {
 		Cook cook;
 		String choice;
@@ -89,32 +105,32 @@ public class MarketAgent extends Agent implements Market{
 			this.amount = amount;
 		}
 	}
-	
+
 	//Methods
 	public void setCashier(Cashier cashier) {
 		this.cashier = cashier;
 	}
-	
+
 	public String getName() {
 		return this.name;
 	}
-	
+
 	public String toString() {
 		return "market " + getName();
 	}
-	
+
 	public void addInventory(String choice, int amount, double price) {
 		inventory.put(choice, new FoodData(price, amount));
 	}
-	
+
 	public void cleanInventory() {
 		inventory.clear();
 	}
-	
+
 	public boolean getEnoughInventory() {
 		return isEnoughInventory;
 	}
-	
+
 	public void setEnoughInventory(boolean enough) {
 		isEnoughInventory = enough;
 		if(!enough) {

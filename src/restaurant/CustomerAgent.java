@@ -44,7 +44,7 @@ public class CustomerAgent extends Agent implements Customer{
 	private AgentState state = AgentState.DoingNothing;//The start state
 	public enum AgentEvent 
 	{gotHungry, beingSeated, decidedChoice, waiterToTakeOrder, foodDelivered, doneEating, gotBill, gotChange, hostFull, changeOrder, WashingDishes};
-	List<AgentEvent> events = new ArrayList<AgentEvent>();
+	List<AgentEvent> events = Collections.synchronizedList(new ArrayList<AgentEvent>());
 
 	/** Constructor for CustomerAgent class 
 	 * @param name name of the customer

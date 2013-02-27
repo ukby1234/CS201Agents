@@ -1,11 +1,12 @@
 package restaurant;
 import java.awt.Color;
 import restaurant.gui.RestaurantGui;
-import restaurant.gui.RestaurantPanel;
 import restaurant.layoutGUI.*;
 import agent.Agent;
 import astar.*;
 import java.util.*;
+import java.util.concurrent.*;
+
 import restaurant.interfaces.*;
 
 /** Restaurant Waiter Agent.
@@ -59,11 +60,12 @@ public class WaiterAgent extends Agent implements Waiter{
 	private String name;
 
 	//All the customers that this waiter is serving
-	private List<MyCustomer> customers = new ArrayList<MyCustomer>();
+	private List<MyCustomer> customers = Collections.synchronizedList(new ArrayList<MyCustomer>());
 
 	private Host host;
 	private Cook cook;
 	private Cashier cashier;
+	private Semaphore sem = new Semaphore(0, true);
 
 	//Animation Variables
 	RestaurantGui mainframe;
@@ -73,6 +75,7 @@ public class WaiterAgent extends Agent implements Waiter{
 	Position currentPosition; 
 	Position originalPosition;
 	Table[] tables; //the gui tables
+	
 
 
 	/** Constructor for WaiterAgent class
@@ -110,12 +113,14 @@ public class WaiterAgent extends Agent implements Waiter{
 	 */
 	public void msgImReadyToOrder(Customer customer){
 		//print("received msgImReadyToOrder from:"+customer);
-		for(int i=0; i < customers.size(); i++){
-			//if(customers.get(i).cmr.equals(customer)){
-			if (customers.get(i).cmr == customer){
-				customers.get(i).state = CustomerState.READY_TO_ORDER;
-				stateChanged();
-				return;
+		synchronized (customers) {
+			for(int i=0; i < customers.size(); i++){
+				//if(customers.get(i).cmr.equals(customer)){
+				if (customers.get(i).cmr == customer){
+					customers.get(i).state = CustomerState.READY_TO_ORDER;
+					stateChanged();
+					return;
+				}
 			}
 		}
 		System.out.println("msgImReadyToOrder in WaiterAgent, didn't find him?");
@@ -125,12 +130,15 @@ public class WaiterAgent extends Agent implements Waiter{
 	 * @param customer customer who has decided their choice
 	 * @param choice the food item that the customer chose */
 	public void msgHereIsMyChoice(Customer customer, String choice){
-		for(MyCustomer c:customers){
-			if(c.cmr.equals(customer)){
-				c.choice = choice;
-				c.state = CustomerState.ORDER_PENDING;
-				stateChanged();
-				return;
+		synchronized (customers) {
+			for(MyCustomer c:customers){
+				if(c.cmr.equals(customer)){
+					c.choice = choice;
+					c.state = CustomerState.ORDER_PENDING;
+					stateChanged();
+					sem.release();
+					return;
+				}
 			}
 		}
 	}
@@ -139,16 +147,18 @@ public class WaiterAgent extends Agent implements Waiter{
 	 * @param tableNum identification number of table whose food is ready
 	 * @param f is the guiFood object */
 	public void msgOrderIsReady(int tableNum, Food f){
-		for(MyCustomer c:customers){
-			print("Order Ready");
-			if(c.tableNum == tableNum){
-				c.state = CustomerState.ORDER_READY;
-				c.food = f; //so that later we can remove it from the table.
-				if(c.changeOrderState == ChangeOrderState.CUST_REORDER_WAITING) {
-					c.changeOrderState = ChangeOrderState.CUST_REORDER_DECLINED;
+		synchronized (customers) {
+			for(MyCustomer c:customers){
+				print("Order Ready");
+				if(c.tableNum == tableNum){
+					c.state = CustomerState.ORDER_READY;
+					c.food = f; //so that later we can remove it from the table.
+					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_WAITING) {
+						c.changeOrderState = ChangeOrderState.CUST_REORDER_DECLINED;
+					}
+					stateChanged();
+					return;
 				}
-				stateChanged();
-				return;
 			}
 		}
 	}
@@ -156,11 +166,13 @@ public class WaiterAgent extends Agent implements Waiter{
 	/** Customer sends this when they are done eating.
 	 * @param customer customer who is leaving the restaurant. */
 	public void msgDoneEatingAndLeaving(Customer customer){
-		for(MyCustomer c:customers){
-			if(c.cmr.equals(customer)){
-				c.state = CustomerState.IS_DONE;
-				stateChanged();
-				return;
+		synchronized (customers) {
+			for(MyCustomer c:customers){
+				if(c.cmr.equals(customer)){
+					c.state = CustomerState.IS_DONE;
+					stateChanged();
+					return;
+				}
 			}
 		}
 	}
@@ -180,53 +192,63 @@ public class WaiterAgent extends Agent implements Waiter{
 	}
 
 	public void msgCookReorder(int tableNum) {
-		for (MyCustomer c : customers) {
-			if (c.tableNum == tableNum && c.secondChoice.equals("")) {
-				c.state = CustomerState.COOK_REORDER_PENDING;
+		synchronized (customers) {
+			for (MyCustomer c : customers) {
+				if (c.tableNum == tableNum && c.secondChoice.equals("")) {
+					c.state = CustomerState.COOK_REORDER_PENDING;
+				}
 			}
 		}
 		stateChanged();
 	}
-	
+
 	public void msgCustReorder(Customer customer, String choice) {
 		print(String.format("%s change order", customer.getName()));
-		for (MyCustomer c : customers) {
-			if (c.cmr == customer) {
-				c.changeOrderState = ChangeOrderState.CUST_REORDER_PENDING;
-				c.secondChoice = choice;
+		synchronized (customers) {
+			for (MyCustomer c : customers) {
+				if (c.cmr == customer) {
+					c.changeOrderState = ChangeOrderState.CUST_REORDER_PENDING;
+					c.secondChoice = choice;
+				}
 			}
 		}
 		stateChanged();
 	}
-	
+
 	public void msgLeaving(Customer customer) {
-		for(MyCustomer c:customers){
-			if(c.cmr.equals(customer)){
-				c.state = CustomerState.LEAVING;
-				stateChanged();
-				return;
+		synchronized (customers) {
+			for(MyCustomer c:customers){
+				if(c.cmr.equals(customer)){
+					c.state = CustomerState.LEAVING;
+					stateChanged();
+					return;
+				}
 			}
 		}
 		stateChanged();
 	}
-	
+
 	public void msgDecisionChangeOrder(int tableNum, boolean approved) {
-		for (MyCustomer c : customers) {
-			if(c.tableNum == tableNum && c.changeOrderState == ChangeOrderState.CUST_REORDER_WAITING) {
-				c.isChangedOrder = 1 + (approved ? 1 : 0);
+		synchronized (customers) {
+			for (MyCustomer c : customers) {
+				if(c.tableNum == tableNum && c.changeOrderState == ChangeOrderState.CUST_REORDER_WAITING) {
+					c.isChangedOrder = 1 + (approved ? 1 : 0);
+				}
 			}
 		}
 		stateChanged();
 	}
-	
+
 	public void msgImReadyToReorder(Customer customer){
 		//print("received msgImReadyToOrder from:"+customer);
-		for(int i=0; i < customers.size(); i++){
-			//if(customers.get(i).cmr.equals(customer)){
-			if (customers.get(i).cmr == customer){
-				customers.get(i).changeOrderState = ChangeOrderState.CUST_REORDER_READY;
-				stateChanged();
-				return;
+		synchronized (customers) {
+			for(int i=0; i < customers.size(); i++){
+				//if(customers.get(i).cmr.equals(customer)){
+				if (customers.get(i).cmr == customer){
+					customers.get(i).changeOrderState = ChangeOrderState.CUST_REORDER_READY;
+					stateChanged();
+					return;
+				}
 			}
 		}
 		System.out.println("msgImReadyToOrder in WaiterAgent, didn't find him?");
@@ -249,11 +271,13 @@ public class WaiterAgent extends Agent implements Waiter{
 
 	public void msgHereIsBill(Customer customer, Double bill) {
 		print("Getting Bill From Cashier");
-		for (MyCustomer c : customers) {
-			if (c.cmr.equals(customer)) {
-				c.bill = bill;
-				stateChanged();
-				return;
+		synchronized (customers) {
+			for (MyCustomer c : customers) {
+				if (c.cmr.equals(customer)) {
+					c.bill = bill;
+					stateChanged();
+					return;
+				}
 			}
 		}
 	}
@@ -266,126 +290,130 @@ public class WaiterAgent extends Agent implements Waiter{
 
 		//Runs through the customers for each rule, so 
 		//the waiter doesn't serve only one customer at a time
-		if (state == WaiterState.Pending_Break) {
-			print("Asking the host");
-			host.msgCanIOnBreak(this);
-		}
-
-		if(customers.isEmpty() && state == WaiterState.NotWorking) {
-			print("I'm on break now");
-		}
-
-		if (state == WaiterState.Pending_Resume) {
-			host.msgResumeWork(this);
-		}
-		if(!customers.isEmpty()){
-			//System.out.println("in scheduler, customers not empty:");	  
-			
-			for(MyCustomer c:customers){
-				if(c.changeOrderState == ChangeOrderState.CUST_REORDER_WAITING && c.isChangedOrder != 0) {
-					if(c.isChangedOrder - 1 == 0) {
-						c.changeOrderState = ChangeOrderState.CUST_REORDER_DECLINED;
-					}else
-						c.changeOrderState = ChangeOrderState.CUST_REORDER_APPROVED;
-					return true;
-				}
-			}
-			
-			for(MyCustomer c:customers){
-				if(c.changeOrderState == ChangeOrderState.CUST_REORDER_DECLINED) {
-					tellCustomerChangeOrderDecision(c, false);
-					c.secondChoice = "";
-					return true;
-				}
-				if(c.changeOrderState == ChangeOrderState.CUST_REORDER_APPROVED) {
-					tellCustomerChangeOrderDecision(c, true);
-					c.secondChoice = "";
-					return true;
-				}
-			}
-			
-			//Gives food to customer if the order is ready
-			for(MyCustomer c:customers){
-				if(c.state == CustomerState.ORDER_READY) {
-					makeBill(c);
-					giveFoodToCustomer(c);
-					return true;
-				}
-			}
-			//Clears the table if the customer has left
-			for(MyCustomer c:customers){
-				if(c.state == CustomerState.IS_DONE && c.bill != 0) {
-					clearTable(c);
-					sendBillToCustomer(c);
-					return true;
-				}
-			}
-			
-			for(MyCustomer c:customers){
-				if(c.state == CustomerState.LEAVING) {
-					clearTable(c);
-					return true;
-				}
+		try {
+			if (state == WaiterState.Pending_Break) {
+				print("Asking the host");
+				host.msgCanIOnBreak(this);
 			}
 
-			//Seats the customer if they need it
-			for(MyCustomer c:customers){
-				if(c.state == CustomerState.NEED_SEATED){
-					seatCustomer(c);
-					return true;
-				}
-			}
-			
-			//Cook runs out of food
-			for(MyCustomer c : customers){
-				if(c.state == CustomerState.COOK_REORDER_PENDING){
-					reorderCustomer(c);
-					return true;
-				}
-			}
-			
-			//Gives all pending orders to the cook
-			for(MyCustomer c:customers){
-				if(c.state == CustomerState.ORDER_PENDING){
-					//print("Cook");
-					giveOrderToCook(c);
-					return true;
-				}
-			}
-			
-			//Customer reorder
-			for(MyCustomer c:customers){
-				//print("testing for ready to order"+c.state);
-				if(c.changeOrderState == ChangeOrderState.CUST_REORDER_READY) {
-					takeReorder(c);
-					return true;
-				}
-			}
-			
-			for(MyCustomer c : customers){
-				if(c.changeOrderState == ChangeOrderState.CUST_REORDER_PENDING){
-					reorderCook(c);
-					return true;
-				}
+			if(customers.isEmpty() && state == WaiterState.NotWorking) {
+				print("I'm on break now");
 			}
 
-			//Takes new orders for customers that are ready
-			for(MyCustomer c:customers){
-				//print("testing for ready to order"+c.state);
-				if(c.state == CustomerState.READY_TO_ORDER) {
-					takeOrder(c);
-					return true;
-				}
-			}	 
-			  
-		}
-		
-		
-		if (!currentPosition.equals(originalPosition)) {
-			DoMoveToOriginalPosition();//Animation thing
-			return true;
-		}
+			if (state == WaiterState.Pending_Resume) {
+				host.msgResumeWork(this);
+			}
+			if(!customers.isEmpty()){
+				//System.out.println("in scheduler, customers not empty:");	  
 
+				for(MyCustomer c:customers){
+					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_WAITING && c.isChangedOrder != 0) {
+						if(c.isChangedOrder - 1 == 0) {
+							c.changeOrderState = ChangeOrderState.CUST_REORDER_DECLINED;
+						}else
+							c.changeOrderState = ChangeOrderState.CUST_REORDER_APPROVED;
+						return true;
+					}
+				}
+
+				for(MyCustomer c:customers){
+					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_DECLINED) {
+						tellCustomerChangeOrderDecision(c, false);
+						c.secondChoice = "";
+						return true;
+					}
+					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_APPROVED) {
+						tellCustomerChangeOrderDecision(c, true);
+						c.secondChoice = "";
+						return true;
+					}
+				}
+
+				//Gives food to customer if the order is ready
+				for(MyCustomer c:customers){
+					if(c.state == CustomerState.ORDER_READY) {
+						makeBill(c);
+						giveFoodToCustomer(c);
+						return true;
+					}
+				}
+				//Clears the table if the customer has left
+				for(MyCustomer c:customers){
+					if(c.state == CustomerState.IS_DONE && c.bill != 0) {
+						clearTable(c);
+						sendBillToCustomer(c);
+						return true;
+					}
+				}
+
+				for(MyCustomer c:customers){
+					if(c.state == CustomerState.LEAVING) {
+						clearTable(c);
+						return true;
+					}
+				}
+
+				//Seats the customer if they need it
+				for(MyCustomer c:customers){
+					if(c.state == CustomerState.NEED_SEATED){
+						seatCustomer(c);
+						return true;
+					}
+				}
+
+				//Cook runs out of food
+				for(MyCustomer c : customers){
+					if(c.state == CustomerState.COOK_REORDER_PENDING){
+						reorderCustomer(c);
+						return true;
+					}
+				}
+
+				//Gives all pending orders to the cook
+				/*for(MyCustomer c:customers){
+					if(c.state == CustomerState.ORDER_PENDING){
+						//print("Cook");
+						giveOrderToCook(c);
+						return true;
+					}
+				}*/
+
+				//Customer reorder
+				for(MyCustomer c:customers){
+					//print("testing for ready to order"+c.state);
+					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_READY) {
+						takeReorder(c);
+						return true;
+					}
+				}
+
+				for(MyCustomer c : customers){
+					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_PENDING){
+						reorderCook(c);
+						return true;
+					}
+				}
+
+				//Takes new orders for customers that are ready
+				for(MyCustomer c:customers){
+					//print("testing for ready to order"+c.state);
+					if(c.state == CustomerState.READY_TO_ORDER) {
+						takeOrder(c);
+						while (c.state != CustomerState.ORDER_PENDING)
+							while(!sem.tryAcquire());
+						giveOrderToCook(c);
+						return true;
+					}
+				}	 
+
+			}
+
+
+			if (!currentPosition.equals(originalPosition)) {
+				DoMoveToOriginalPosition();//Animation thing
+				return true;
+			}
+		}catch (ConcurrentModificationException e) {return true;}
 		//we have tried all our rules and found nothing to do. 
 		// So return false to main loop of abstract agent and wait.
 		//print("in scheduler, no rules matched:");
@@ -411,7 +439,7 @@ public class WaiterAgent extends Agent implements Waiter{
 		customer.cmr.msgWhatWouldYouLike();
 		stateChanged();
 	}
-	
+
 	private void takeReorder(MyCustomer customer) {
 		DoTakeOrder(customer); //animation
 		customer.changeOrderState = ChangeOrderState.CUST_NOTHING;
@@ -474,7 +502,7 @@ public class WaiterAgent extends Agent implements Waiter{
 	private void sendBillToCustomer(MyCustomer customer) {
 		customer.cmr.msgHereIsMyBill(customer.bill);
 	}
-	
+
 	private void reorderCustomer(MyCustomer c){
 		print(String.format("Send To %s To Reorder", c.cmr.getName()));
 		c.menu.choices.remove(c.choice);
@@ -482,7 +510,7 @@ public class WaiterAgent extends Agent implements Waiter{
 		c.state = CustomerState.COOK_REORDER_DONE;
 		stateChanged();
 	}
-	
+
 	private void reorderCook(MyCustomer c) {
 		print(String.format("%s changes order to %s", c.cmr.getName(), c.secondChoice));
 		tables[c.tableNum].takeOrder(c.secondChoice.substring(0,2)+"?");
@@ -493,7 +521,7 @@ public class WaiterAgent extends Agent implements Waiter{
 		c.changeOrderState = ChangeOrderState.CUST_REORDER_WAITING;
 		stateChanged();
 	}
-	
+
 	private void tellCustomerChangeOrderDecision(MyCustomer c, boolean decision) {
 		if(decision) {
 			print(String.format("Cook approved %s change order", c.cmr.getName()));
