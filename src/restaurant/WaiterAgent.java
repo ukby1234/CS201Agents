@@ -14,7 +14,7 @@ import restaurant.interfaces.*;
  * Takes the orders to the cook and then returns them 
  * when the food is done.  Cleans up the tables after the customers leave.
  * Interacts with customers, host, and cook */
-public class WaiterAgent extends Agent implements Waiter{
+public abstract class WaiterAgent extends Agent implements Waiter{
 
 	//State variables for Waiter
 	public enum WaiterState {Pending_Break, Pending_Resume, Sent_Break, Sent_Resume, Working, NotWorking};
@@ -31,7 +31,7 @@ public class WaiterAgent extends Agent implements Waiter{
 	/** Private class to hold information for each customer.
 	 * Contains a reference to the customer, his choice, 
 	 * table number, and state */
-	private class MyCustomer {
+	class MyCustomer {
 		public CustomerState state;
 		public Customer cmr;
 		public ChangeOrderState changeOrderState;
@@ -63,7 +63,7 @@ public class WaiterAgent extends Agent implements Waiter{
 	private List<MyCustomer> customers = Collections.synchronizedList(new ArrayList<MyCustomer>());
 
 	private Host host;
-	private Cook cook;
+	protected Cook cook;
 	private Cashier cashier;
 	private Semaphore sem = new Semaphore(0, true);
 
@@ -425,7 +425,7 @@ public class WaiterAgent extends Agent implements Waiter{
 
 	/** Seats the customer at a specific table 
 	 * @param customer customer that needs seated */
-	private void seatCustomer(MyCustomer customer) {
+	protected void seatCustomer(MyCustomer customer) {
 		DoSeatCustomer(customer); //animation	
 		customer.state = CustomerState.NO_ACTION;
 		customer.cmr.msgFollowMeToTable(this, customer.menu);
@@ -433,14 +433,14 @@ public class WaiterAgent extends Agent implements Waiter{
 	}
 	/** Takes down the customers order 
 	 * @param customer customer that is ready to order */
-	private void takeOrder(MyCustomer customer) {
+	protected void takeOrder(MyCustomer customer) {
 		DoTakeOrder(customer); //animation
 		customer.state = CustomerState.NO_ACTION;
 		customer.cmr.msgWhatWouldYouLike();
 		stateChanged();
 	}
 
-	private void takeReorder(MyCustomer customer) {
+	protected void takeReorder(MyCustomer customer) {
 		DoTakeOrder(customer); //animation
 		customer.changeOrderState = ChangeOrderState.CUST_NOTHING;
 		customer.cmr.msgWhatWouldYouLike();
@@ -449,38 +449,11 @@ public class WaiterAgent extends Agent implements Waiter{
 
 	/** Gives any pending orders to the cook 
 	 * @param customer customer that needs food cooked */
-	private void giveOrderToCook(MyCustomer customer) {
-		//In our animation the waiter does not move to the cook in
-		//order to give him an order. We assume some sort of electronic
-		//method implemented as our message to the cook. So there is no
-		//animation analog, and hence no DoXXX routine is needed.
-		if (customer.choice.equals("")) {
-			tables[customer.tableNum].takeOrder("");
-			restaurant.placeFood(tables[customer.tableNum].foodX(),
-					tables[customer.tableNum].foodY(),
-					new Color(255, 255, 255), "");
-			stateChanged();
-			return;
-		}
-		print("Giving " + customer.cmr + "'s choice of " + customer.choice + " to cook");
-
-
-		customer.state = CustomerState.NO_ACTION;
-		cook.msgHereIsAnOrder(this, customer.tableNum, customer.choice);
-		stateChanged();
-
-		//Here's a little animation hack. We put the first two
-		//character of the food name affixed with a ? on the table.
-		//Simply let's us see what was ordered.
-		tables[customer.tableNum].takeOrder(customer.choice.substring(0,2)+"?");
-		restaurant.placeFood(tables[customer.tableNum].foodX(),
-				tables[customer.tableNum].foodY(),
-				new Color(255, 255, 255), customer.choice.substring(0,2)+"?");
-	}
-
+	protected abstract void giveOrderToCook(MyCustomer customer);
+	
 	/** Gives food to the customer 
 	 * @param customer customer whose food is ready */
-	private void giveFoodToCustomer(MyCustomer customer) {
+	protected void giveFoodToCustomer(MyCustomer customer) {
 		DoGiveFoodToCustomer(customer);//Animation
 		customer.state = CustomerState.NO_ACTION;
 		customer.cmr.msgHereIsYourFood(customer.choice);
@@ -488,22 +461,22 @@ public class WaiterAgent extends Agent implements Waiter{
 	}
 	/** Starts a timer to clear the table 
 	 * @param customer customer whose table needs cleared */
-	private void clearTable(MyCustomer customer) {
+	protected void clearTable(MyCustomer customer) {
 		DoClearingTable(customer);
 		customers.remove(customer);
 		//customer.state = CustomerState.NO_ACTION;
 		stateChanged();
 	}
 
-	private void makeBill(MyCustomer c) {
+	protected void makeBill(MyCustomer c) {
 		cashier.msgMakeBill(this, c.cmr, c.choice);
 	}
 
-	private void sendBillToCustomer(MyCustomer customer) {
+	protected void sendBillToCustomer(MyCustomer customer) {
 		customer.cmr.msgHereIsMyBill(customer.bill);
 	}
 
-	private void reorderCustomer(MyCustomer c){
+	protected void reorderCustomer(MyCustomer c){
 		print(String.format("Send To %s To Reorder", c.cmr.getName()));
 		c.menu.choices.remove(c.choice);
 		c.cmr.msgPleaseReorder(c.menu);
@@ -511,7 +484,7 @@ public class WaiterAgent extends Agent implements Waiter{
 		stateChanged();
 	}
 
-	private void reorderCook(MyCustomer c) {
+	protected void reorderCook(MyCustomer c) {
 		print(String.format("%s changes order to %s", c.cmr.getName(), c.secondChoice));
 		tables[c.tableNum].takeOrder(c.secondChoice.substring(0,2)+"?");
 		restaurant.placeFood(tables[c.tableNum].foodX(),
@@ -522,7 +495,7 @@ public class WaiterAgent extends Agent implements Waiter{
 		stateChanged();
 	}
 
-	private void tellCustomerChangeOrderDecision(MyCustomer c, boolean decision) {
+	protected void tellCustomerChangeOrderDecision(MyCustomer c, boolean decision) {
 		if(decision) {
 			print(String.format("Cook approved %s change order", c.cmr.getName()));
 			c.choice = c.secondChoice;
@@ -574,7 +547,7 @@ public class WaiterAgent extends Agent implements Waiter{
 	/** Function called at the end of the clear table timer
 	 * to officially remove the customer from the waiter's list.
 	 * @param customer customer who needs removed from list */
-	private void endCustomer(MyCustomer customer){ 
+	protected void endCustomer(MyCustomer customer){ 
 		print("Table " + (customer.tableNum+1) + " is cleared!");
 		if(customer.food != null)
 			customer.food.remove(); //remove the food from table animation
@@ -582,7 +555,7 @@ public class WaiterAgent extends Agent implements Waiter{
 		customers.remove(customer);
 		stateChanged();
 	}
-	private void DoMoveToOriginalPosition(){
+	protected void DoMoveToOriginalPosition(){
 		print("Nothing to do. Moving to original position="+originalPosition);
 		guiMoveFromCurrentPostionTo(originalPosition);
 	}

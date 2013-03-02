@@ -28,9 +28,10 @@ public class CookAgent extends Agent implements Cook{
 	private boolean waiting = false;
 	private boolean isUnderLimit = false;
 	private boolean isRunOutOfFood = false;
+	private ShareData shareData;
 	//Name of the cook
 	private String name;
-
+	private FetchOrder fo = new FetchOrder();
 	//Timer for simulation
 	Timer timer = new Timer();
 	Restaurant restaurant; //Gui layout
@@ -397,6 +398,24 @@ public class CookAgent extends Agent implements Cook{
 			inventory.put("Salad",new FoodData("Salad", 2, 10, 5));
 		}
 		stateChanged();
+	}
+	
+	public void setShareData(ShareData sd) {
+		shareData = sd;
+		fo.start();
+	}
+	
+	private class FetchOrder extends Thread {
+		public void run() {
+			if (shareData != null) {
+				while (true) {
+					ShareOrder d = shareData.removeItem();
+					//System.out.println("Here");
+					orders.add(new Order(d.waiter, d.tableNum, d.choice));
+					stateChanged();
+				}
+			}
+		}
 	}
 }
 

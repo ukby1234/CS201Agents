@@ -160,7 +160,7 @@ public class RestaurantGui extends JFrame implements ActionListener{
 				CustomerAgent c = (CustomerAgent) currentPerson;
 				c.setHungry();
 				stateCB_1.setEnabled(false);
-			}else if(currentPerson instanceof WaiterAgent){
+			}else if(currentPerson instanceof WaiterAgent || currentPerson instanceof ShareDataWaiterAgent){
 				WaiterAgent w = (WaiterAgent) currentPerson;
 				w.setBreakStatus(stateCB_1.isSelected());
 			}else if (currentPerson instanceof HostAgent) {

@@ -16,6 +16,7 @@ public class ListPanel extends JPanel implements ActionListener{
 	private JPanel view = new JPanel();
 	private Vector<JButton> list = new Vector<JButton>();
 	private JButton addPersonB = new JButton("Add");
+	private JButton addPersonC = new JButton("Add ShareData");
 
 	private RestaurantPanel restPanel;
 	private String type;
@@ -31,8 +32,14 @@ public class ListPanel extends JPanel implements ActionListener{
 
 		addPersonB.addActionListener(this);
 		add(addPersonB);
+		if (type.equals("Waiters")) {
+			addPersonC.addActionListener(this);
+			add(addPersonC);
+		}
 		if (type.equals("Host") || type.equals("Market") || type.equals("Cook"))
 			addPersonB.setEnabled(false);
+		if (type.equals("Waiters"))
+			addPersonB.setText("Add Normal");
 		view.setLayout(new BoxLayout((Container) view, BoxLayout.Y_AXIS));
 		pane.setViewportView(view);
 		add(pane);
@@ -43,7 +50,10 @@ public class ListPanel extends JPanel implements ActionListener{
 	public void actionPerformed(ActionEvent e){
 
 		if(e.getSource() == addPersonB) {
-			addPerson(JOptionPane.showInputDialog("Please enter a name:"));
+			addPerson(JOptionPane.showInputDialog("Please enter a name:"), type.equals("Waiters") ? "Normal" : type);
+		}
+		else if(e.getSource() == addPersonC) {
+			addPerson(JOptionPane.showInputDialog("Please enter a name:"), type.equals("Waiters") ? "Share" : type);
 		}
 		else {
 
@@ -60,20 +70,20 @@ public class ListPanel extends JPanel implements ActionListener{
 	 * a spot for it in the scroll pane, and tells the restaurant panel 
 	 * to add a new person.
 	 * @param name name of new person */
-	public void addPerson(String name){
+	public void addPerson(String name, String type){
 		if(name != null){
 			try {
 				String c;
 				if (type.equals("Waiters")) c="w"; else c="c"; 
 				int n = Integer.valueOf( name ).intValue();
-				for (int i=1; i<=n; i++) createIt(c+i);
+				for (int i=1; i<=n; i++) createIt(c+i, type);
 			}
 			catch (NumberFormatException e) {
-				createIt(name);
+				createIt(name, type);
 			}
 		}
 	}
-	void createIt(String name){
+	void createIt(String name, String type){
 		//System.out.println("createIt name="+name+"XX"); 
 		JButton button = new JButton(name);
 		button.setBackground(Color.white);

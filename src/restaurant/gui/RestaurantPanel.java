@@ -25,7 +25,7 @@ public class RestaurantPanel extends JPanel {
 	Semaphore[][] grid = new Semaphore[gridX+1][gridY+1]; 
 	//Table[] tables = new Table[nTables];
 	Table[] tables = new Table[gridX * gridY];
-
+	ShareData sd = new ShareData();
 	Restaurant restaurant =  new Restaurant("Welcome to csci201's Restaurant",
 			gridX, gridY, grid, tables);
 
@@ -114,19 +114,20 @@ public class RestaurantPanel extends JPanel {
 		market2.setCashier(cashier);
 		cook.addMarket(market);
 		cook.addMarket(market2);
+		cook.setShareData(sd);
 		market2.startThread();
 		market.startThread();
 		host.startThread();
 		cook.startThread();
 		cashier.startThread();
-
+		
 		setLayout(new GridLayout(1,2, 20,20));
 		group.setLayout(new GridLayout(1,2, 10,10));
-		hostPanel.addPerson(host.getName());
+		hostPanel.addPerson(host.getName(), "Host");
 		hostPanel.startThread();
-		marketPanel.addPerson(market.getName());
+		marketPanel.addPerson(market.getName(), "Market");
 		marketPanel.startThread();
-		cookPanel.addPerson(cook.getName());
+		cookPanel.addPerson(cook.getName(), "Cook");
 		cookPanel.startThread();
 		group.add(waiterPanel);
 		group.add(customerPanel);
@@ -195,9 +196,20 @@ public class RestaurantPanel extends JPanel {
 			customers.add(c);
 			c.startThread(); //Customer is fsm.
 			c.setHungry();
-		} else if(type.equals("Waiters")){
+		} else if(type.equals("Share")){
 			AStarTraversal aStarTraversal = new AStarTraversal(grid);
-			WaiterAgent w = new WaiterAgent(name, aStarTraversal, restaurant, tables);
+			WaiterAgent w = new ShareDataWaiterAgent(name, aStarTraversal, restaurant, tables, sd);
+			w.setGuiPanel(gui);
+			w.setHost(host);
+			w.setCook(cook);
+			w.setCashier(cashier);
+			host.setWaiter(w);
+			waiters.add(w);
+			w.startThread();
+		}
+		else if(type.equals("Normal")){
+			AStarTraversal aStarTraversal = new AStarTraversal(grid);
+			WaiterAgent w = new MessagingWaiterAgent(name, aStarTraversal, restaurant, tables);
 			w.setGuiPanel(gui);
 			w.setHost(host);
 			w.setCook(cook);
