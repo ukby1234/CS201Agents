@@ -3,11 +3,12 @@ package restaurant;
 import agent.Agent;
 import java.util.*;
 import restaurant.interfaces.*;
+import restaurant.test.*;
 
 public class CashierAgent extends Agent implements Cashier{
-	enum BillStatus {Ready, Pending, Received, Cleared};
-	List<MyCustomer> customers = Collections.synchronizedList(new ArrayList<MyCustomer>());
-	List<MyMarket> markets = Collections.synchronizedList(new ArrayList<MyMarket>());
+	public enum BillStatus {Ready, Pending, Received, Cleared};
+	public List<MyCustomer> customers = Collections.synchronizedList(new ArrayList<MyCustomer>());
+	public List<MyMarket> markets = Collections.synchronizedList(new ArrayList<MyMarket>());
 	Menu menu;
 	String name;
 	Timer t = new Timer();
@@ -15,6 +16,7 @@ public class CashierAgent extends Agent implements Cashier{
 		this.name = name;
 		menu = new Menu();
 	}
+	public EventLog events = new EventLog();
 	//Messaging
 	public void msgMakeBill(Waiter wtr, Customer cta, String choice) {
 		//print("Making Bill for " + cta.getName());
@@ -23,7 +25,7 @@ public class CashierAgent extends Agent implements Cashier{
 		synchronized (customers) {
 			for (MyCustomer c : customers) {
 				if (c.customer.equals(cta)) {
-					print("Old Customer");
+					//print("Old Customer");
 					c.bill = bill;
 					stateChanged();
 					return;
@@ -51,7 +53,7 @@ public class CashierAgent extends Agent implements Cashier{
 		stateChanged();
 	}
 	@Override
-	protected boolean pickAndExecuteAnAction() {
+	public boolean pickAndExecuteAnAction() {
 		MyCustomer customer = null;
 		synchronized (customers) {
 			for (MyCustomer c : customers) {
@@ -97,6 +99,7 @@ public class CashierAgent extends Agent implements Cashier{
 	private void makeBill(MyCustomer c) {
 		//print("Called");
 		print("Making bill for " + c.customer.getName() + " (1000 milliseconds)");
+		events.add(new LoggedEvent("Making bill for " + c.customer.getName() + " (1000 milliseconds)"));
 		try {
 			Thread.sleep(1000);
 		}catch (InterruptedException e) {}
@@ -107,10 +110,12 @@ public class CashierAgent extends Agent implements Cashier{
 
 	private void makeChange(MyCustomer c) {
 		print("Receiving Payment from " + c.customer.getName() + " of $" + c.payment);
+		events.add(new LoggedEvent("Receiving Payment from " + c.customer.getName() + " of $" + c.payment));
 		if (c.payment - c.bill.price >= 0)
 			c.customer.msgHereIsChange(c.payment - c.bill.price);
 		else {
 			print("Fuck You!");
+			events.add(new LoggedEvent("Fuck You!"));
 			c.customer.msgWashingDishes(c.bill.price - c.payment + 1);
 		}
 		c.bill.status = BillStatus.Cleared;
@@ -119,15 +124,16 @@ public class CashierAgent extends Agent implements Cashier{
 
 	private void payToMarket(MyMarket m) {
 		print(String.format("Paying to %s %.2f", m.market.getName(), m.bill));
+		events.add(new LoggedEvent(String.format("Paying to %s %.2f", m.market.getName(), m.bill)));
 		m.market.msgHereIsPayment(m.bill);
 		m.status = BillStatus.Cleared;
 		stateChanged();
 	}
-	private class MyCustomer {
+	public class MyCustomer {
 		Customer customer;
 		Waiter waiter;
-		Bill bill;
-		Double payment;
+		public Bill bill;
+		public Double payment;
 		public MyCustomer(Customer cta, Waiter wtr, Bill bill) {
 			customer = cta;
 			waiter = wtr;
@@ -136,19 +142,19 @@ public class CashierAgent extends Agent implements Cashier{
 		}
 	}
 
-	private class Bill {
-		Double price;
-		BillStatus status;
+	public class Bill {
+		public Double price;
+		public BillStatus status;
 		public Bill(Double price, BillStatus status) {
 			this.price = price;
 			this.status = status;
 		}
 	}
 
-	private class MyMarket {
+	public class MyMarket {
 		Market market;
-		BillStatus status;
-		Double bill;
+		public BillStatus status;
+		public Double bill;
 		public MyMarket(Market market, BillStatus status, Double bill) {
 			this.market = market;
 			this.status = status;
