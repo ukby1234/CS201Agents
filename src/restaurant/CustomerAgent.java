@@ -1,13 +1,12 @@
 package restaurant;
 
-import restaurant.WaiterAgent.CustomerState;
 import restaurant.gui.RestaurantGui;
 import restaurant.interfaces.*;
 import restaurant.layoutGUI.*;
 import agent.Agent;
 import java.util.*;
 import java.awt.Color;
-
+import java.util.concurrent.*;
 /** Restaurant customer agent. 
  * Comes to the restaurant when he/she becomes hungry.
  * Randomly chooses a menu item and simulates eating 
@@ -45,7 +44,7 @@ public class CustomerAgent extends Agent implements Customer{
 	public enum AgentEvent 
 	{gotHungry, beingSeated, decidedChoice, waiterToTakeOrder, foodDelivered, doneEating, gotBill, gotChange, hostFull, changeOrder, WashingDishes};
 	List<AgentEvent> events = Collections.synchronizedList(new ArrayList<AgentEvent>());
-
+	private Semaphore sem = new Semaphore(0, true);
 	/** Constructor for CustomerAgent class 
 	 * @param name name of the customer
 	 * @param gui reference to the gui so the customer can send it messages
@@ -99,7 +98,8 @@ public class CustomerAgent extends Agent implements Customer{
 	}
 	/** Waiter sends this message to take the customer's order */
 	public void msgWhatWouldYouLike(){
-		events.add(AgentEvent.waiterToTakeOrder);
+		//events.add(AgentEvent.waiterToTakeOrder);
+		sem.release();
 		stateChanged(); 
 	}
 
@@ -204,28 +204,18 @@ public class CustomerAgent extends Agent implements Customer{
 		}
 		if (state == AgentState.SeatedWithMenu) {
 			if (event == AgentEvent.decidedChoice)	{
-				callWaiter();
-				state = AgentState.WaiterCalled;
+				multiStepAction();
 				return true;
 			}
 		}
-		if (state == AgentState.WaiterCalled) {
+		/*if (state == AgentState.WaiterCalled) {
 			//print("Here");
 			if (event == AgentEvent.waiterToTakeOrder)	{
-				if(changeOrder && !isOrdered) {
-					if(menu.choices.isEmpty()) {
-						NonNormLeave = true;
-						leaveRestaurant();
-						return true;
-					}
-					events.add(AgentEvent.changeOrder);
-					stateChanged();
-				}
 				orderFood();
 				state = AgentState.WaitingForFood;
 				return true;
 			}
-		}
+		}*/
 		if (state == AgentState.WaitingForFood) {
 			//print("Here");
 			if (event == AgentEvent.foodDelivered)	{
@@ -318,6 +308,16 @@ public class CustomerAgent extends Agent implements Customer{
 
 	/** Picks a random choice from the menu and sends it to the waiter */
 	private void orderFood(){
+		
+		if(changeOrder && !isOrdered) {
+			if(menu.choices.isEmpty()) {
+				NonNormLeave = true;
+				leaveRestaurant();
+				return;
+			}
+			events.add(AgentEvent.changeOrder);
+			stateChanged();
+		}
 		if(menu.choices.isEmpty()) {
 			print("All Food Running Out");
 			NonNormLeave = true;
@@ -430,8 +430,8 @@ public class CustomerAgent extends Agent implements Customer{
 
 	private void changeOrder() {
 		print("Changing order");
-		callWaiter();
-		state = AgentState.WaiterCalled;
+		state = AgentState.SeatedWithMenu;
+		events.add(AgentEvent.decidedChoice);
 		stateChanged();
 	}
 	
@@ -443,6 +443,13 @@ public class CustomerAgent extends Agent implements Customer{
 			}
 		}, days * 100);
 		
+	}
+	private void multiStepAction() {
+		callWaiter();
+		//state = AgentState.WaiterCalled;
+		while(!sem.tryAcquire());
+		orderFood();
+		state = AgentState.WaitingForFood;		
 	}
 
 	// *** EXTRA ***

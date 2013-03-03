@@ -75,7 +75,7 @@ public abstract class WaiterAgent extends Agent implements Waiter{
 	Position currentPosition; 
 	Position originalPosition;
 	Table[] tables; //the gui tables
-	
+
 
 
 	/** Constructor for WaiterAgent class
@@ -290,22 +290,25 @@ public abstract class WaiterAgent extends Agent implements Waiter{
 
 		//Runs through the customers for each rule, so 
 		//the waiter doesn't serve only one customer at a time
-		try {
-			if (state == WaiterState.Pending_Break) {
-				print("Asking the host");
-				host.msgCanIOnBreak(this);
-			}
 
+		if (state == WaiterState.Pending_Break) {
+			print("Asking the host");
+			host.msgCanIOnBreak(this);
+		}
+		synchronized (customers) {
 			if(customers.isEmpty() && state == WaiterState.NotWorking) {
 				print("I'm on break now");
 			}
+		}
 
-			if (state == WaiterState.Pending_Resume) {
-				host.msgResumeWork(this);
-			}
-			if(!customers.isEmpty()){
-				//System.out.println("in scheduler, customers not empty:");	  
+		if (state == WaiterState.Pending_Resume) {
+			host.msgResumeWork(this);
+		}
 
+		if(!customers.isEmpty()){
+			//System.out.println("in scheduler, customers not empty:");	  
+			MyCustomer temp = null;
+			synchronized (customers)  {
 				for(MyCustomer c:customers){
 					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_WAITING && c.isChangedOrder != 0) {
 						if(c.isChangedOrder - 1 == 0) {
@@ -315,62 +318,114 @@ public abstract class WaiterAgent extends Agent implements Waiter{
 						return true;
 					}
 				}
+			}
 
+			synchronized (customers) {
 				for(MyCustomer c:customers){
 					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_DECLINED) {
-						tellCustomerChangeOrderDecision(c, false);
+						temp = c;		
 						c.secondChoice = "";
-						return true;
-					}
-					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_APPROVED) {
-						tellCustomerChangeOrderDecision(c, true);
-						c.secondChoice = "";
-						return true;
+						break;				
 					}
 				}
+			}
+			if (temp != null) {
+				tellCustomerChangeOrderDecision(temp, false);
+				return true;
+			}
+			synchronized (customers) {
+				temp = null;
+				for(MyCustomer c:customers){
+					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_APPROVED) {
+						temp = c;
+						c.secondChoice = "";
+						break;
+					}
+				}
+			}
 
-				//Gives food to customer if the order is ready
+			if (temp != null) {
+				tellCustomerChangeOrderDecision(temp, true);
+				return true;
+			}
+
+			//Gives food to customer if the order is ready
+			synchronized (customers) {
+				temp = null;
 				for(MyCustomer c:customers){
 					if(c.state == CustomerState.ORDER_READY) {
-						makeBill(c);
-						giveFoodToCustomer(c);
-						return true;
+						temp = c;
+						break;
 					}
 				}
-				//Clears the table if the customer has left
+			}
+			if (temp != null) {
+				makeBill(temp);
+				giveFoodToCustomer(temp);
+				return true;
+			}
+			//Clears the table if the customer has left
+			synchronized (customers) {
+				temp = null;
 				for(MyCustomer c:customers){
 					if(c.state == CustomerState.IS_DONE && c.bill != 0) {
-						clearTable(c);
-						sendBillToCustomer(c);
-						return true;
+						temp = c;
+						break;
 					}
 				}
+			}
+			if (temp != null) {
+				clearTable(temp);
+				sendBillToCustomer(temp);
+				return true;
+			}
 
+			synchronized (customers) {
+				temp = null;
 				for(MyCustomer c:customers){
 					if(c.state == CustomerState.LEAVING) {
-						clearTable(c);
-						return true;
+						temp = c;
+						break;
 					}
 				}
+			}
+			if (temp != null) {
+				clearTable(temp);
+				return true;
+			}
 
-				//Seats the customer if they need it
+			//Seats the customer if they need it
+			synchronized (customers) {
+				temp = null;
 				for(MyCustomer c:customers){
 					if(c.state == CustomerState.NEED_SEATED){
-						seatCustomer(c);
-						return true;
+						temp = c;
+						break;
 					}
 				}
+			}
+			if (temp != null) {
+				seatCustomer(temp);
+				return true;
+			}
 
-				//Cook runs out of food
+			//Cook runs out of food
+			synchronized (customers) {
+				temp = null;
 				for(MyCustomer c : customers){
 					if(c.state == CustomerState.COOK_REORDER_PENDING){
-						reorderCustomer(c);
-						return true;
+						temp = c;
+						break;
 					}
 				}
+			}
+			if (temp != null) {
+				reorderCustomer(temp);
+				return true;
+			}
 
-				//Gives all pending orders to the cook
-				/*for(MyCustomer c:customers){
+			//Gives all pending orders to the cook
+			/*for(MyCustomer c:customers){
 					if(c.state == CustomerState.ORDER_PENDING){
 						//print("Cook");
 						giveOrderToCook(c);
@@ -378,42 +433,60 @@ public abstract class WaiterAgent extends Agent implements Waiter{
 					}
 				}*/
 
-				//Customer reorder
+			//Customer reorder
+			synchronized (customers) {
+				temp = null;
 				for(MyCustomer c:customers){
 					//print("testing for ready to order"+c.state);
 					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_READY) {
-						takeReorder(c);
-						return true;
+						temp = c;
+						break;
 					}
 				}
+			}
+			if (temp != null) {
+				takeReorder(temp);
+				return true;
+			}
 
+			synchronized (customers) {
+				temp = null;
 				for(MyCustomer c : customers){
 					if(c.changeOrderState == ChangeOrderState.CUST_REORDER_PENDING){
-						reorderCook(c);
-						return true;
+						temp = c;
+						break;
 					}
 				}
+			}
+			if (temp != null) {
+				reorderCook(temp);
+				return true;
+			}
 
-				//Takes new orders for customers that are ready
+			//Takes new orders for customers that are ready
+			synchronized (customers) {
+				temp = null;
 				for(MyCustomer c:customers){
 					//print("testing for ready to order"+c.state);
 					if(c.state == CustomerState.READY_TO_ORDER) {
-						takeOrder(c);
-						while (c.state != CustomerState.ORDER_PENDING)
-							while(!sem.tryAcquire());
-						giveOrderToCook(c);
-						return true;
+						temp = c;
+						break;
 					}
-				}	 
-
+				}	
 			}
-
-
-			if (!currentPosition.equals(originalPosition)) {
-				DoMoveToOriginalPosition();//Animation thing
+			if (temp != null) {
+				multiStepAction(temp);
 				return true;
 			}
-		}catch (ConcurrentModificationException e) {return true;}
+
+		}
+
+
+		if (!currentPosition.equals(originalPosition)) {
+			DoMoveToOriginalPosition();//Animation thing
+			return true;
+		}
+
 		//we have tried all our rules and found nothing to do. 
 		// So return false to main loop of abstract agent and wait.
 		//print("in scheduler, no rules matched:");
@@ -450,7 +523,7 @@ public abstract class WaiterAgent extends Agent implements Waiter{
 	/** Gives any pending orders to the cook 
 	 * @param customer customer that needs food cooked */
 	protected abstract void giveOrderToCook(MyCustomer customer);
-	
+
 	/** Gives food to the customer 
 	 * @param customer customer whose food is ready */
 	protected void giveFoodToCustomer(MyCustomer customer) {
@@ -506,6 +579,13 @@ public abstract class WaiterAgent extends Agent implements Waiter{
 		c.changeOrderState = ChangeOrderState.CUST_NOTHING;
 		c.cmr.msgDecisionOnChangeOrder(decision);
 		stateChanged();
+	}
+	
+	protected void multiStepAction(MyCustomer c) {
+		takeOrder(c);
+		while (c.state != CustomerState.ORDER_PENDING)
+			while(!sem.tryAcquire());
+		giveOrderToCook(c);
 	}
 
 	// Animation Actions
