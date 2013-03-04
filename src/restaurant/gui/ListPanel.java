@@ -74,7 +74,7 @@ public class ListPanel extends JPanel implements ActionListener{
 		if(name != null){
 			try {
 				String c;
-				if (type.equals("Waiters")) c="w"; else c="c"; 
+				if (type.equals("Customers")) c="c"; else c="w"; 
 				int n = Integer.valueOf( name ).intValue();
 				for (int i=1; i<=n; i++) createIt(c+i, type);
 			}

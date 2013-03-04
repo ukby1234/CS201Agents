@@ -14,3 +14,7 @@ Non-normative scenarios:
 7. Waiter wants to go on break, he's told it's NOT OK and must keep working. -- First uncheck the Allow Break? in the host button, and check On Break? in the waiter buttons. 
 8. Customer comes to restaurant and restaurant is full, customer is told and waits. -- don't add any waiters or add 10 customers. If you add customers, click the customer that has not been seated and check the waiting in customer buttons.
 9.  Customer comes to restaurant and restaurant is full, customer is told and waits. -- don't add any waiters or add 10 customers. If you add customers, click the customer that has not been seated and uncheck the waiting in the customer buttons.
+V4.2 notes:
+Adding Messaging waiters - click add normal
+Adding ShareData waiters - click add sharedata
+the host's allow break check box is obsolete. now it is based on rules

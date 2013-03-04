@@ -586,6 +586,7 @@ public abstract class WaiterAgent extends Agent implements Waiter{
 		while (c.state != CustomerState.ORDER_PENDING)
 			while(!sem.tryAcquire());
 		giveOrderToCook(c);
+		DoMoveToOriginalPosition();
 	}
 
 	// Animation Actions
@@ -604,6 +605,7 @@ public abstract class WaiterAgent extends Agent implements Waiter{
 		print("Taking " + customer.cmr +"'s order.");
 		Position tablePos = new Position(tables[customer.tableNum].getX()-1,
 				tables[customer.tableNum].getY()+1);
+		print(tablePos.toString());
 		guiMoveFromCurrentPostionTo(tablePos);
 	}
 	void DoGiveFoodToCustomer(MyCustomer customer){

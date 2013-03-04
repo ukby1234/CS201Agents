@@ -300,7 +300,13 @@ public class CustomerAgent extends Agent implements Customer{
 			waiter.msgImReadyToOrder(this);
 		}else {
 			print("Call waiter to reorder");
-			waiter.msgImReadyToReorder(this);
+			final CustomerAgent t = this;
+			timer.schedule(new TimerTask() {
+				public void run() {
+					waiter.msgImReadyToReorder(t);
+				}
+			}, 100);
+			
 		}
 		
 		stateChanged();

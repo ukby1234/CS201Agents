@@ -176,75 +176,130 @@ public class CookAgent extends Agent implements Cook{
 
 	/** Scheduler.  Determine what action is called for, and do it. */
 	protected boolean pickAndExecuteAnAction() {
-		try {
+		ChangeOrder co = null;
+		Order order = null;
+		synchronized (changeOrders) {
 			if (!changeOrders.isEmpty()) {
-				//print("Here");
-				ChangeOrder co = changeOrders.remove(0);
-				for (Order o : orders) {
-					if (o.tableNum == co.tableNum) {
-						if(o.status == Status.pending || o.status == Status.waiting) {
-							//print("Here");
-							co.decision = true;
+				co = changeOrders.remove(0);
+				synchronized (orders) {
+					for (Order o : orders) {
+						if (o.tableNum == co.tableNum) {
+							if(o.status == Status.pending || o.status == Status.waiting) {
+								//print("Here");
+								co.decision = true;
+							}
+							order = o;
+							break;
 						}
+
 					}
-					changeOrder(o, co);
 				}
-				return true;
 			}
+		}
+		if (co != null && order != null) {
+			changeOrder(order, co);
+			return true;
+		}
+
+		synchronized (orders) {
+			order = null;
 			for (Order o : orders) {
 				if (inventory.get(o.choice).amount <= 0 && o.status == Status.pending) {
-					runOutOfFood(o);
-					return true;
+					order = o;
+					break;
 				}
 			}
+		}
+		if (order != null) {
+			runOutOfFood(order);
+			return true;
+		}
 
+		FoodData fd = null;
+		boolean flag = true;
+		synchronized (inventory) {
 			for (String type : inventory.keySet()) {
-				FoodData fd = inventory.get(type);
-				boolean flag = true;
-				for (InventoryOrder o : invords) {
-					if (o.type.equals(fd.type) && o.status != InventoryStatus.Done)
-						flag = false;
+				fd = inventory.get(type);
+				synchronized (invords) {
+					for (InventoryOrder o : invords) {
+						if (o.type.equals(fd.type) && o.status != InventoryStatus.Done)
+							flag = false;
 
-				}
-				if (fd.amount < fd.limit && flag) {
-					orderMore(fd);
-					return true;
+					}
 				}
 			}
+		}
+		if (fd != null && (fd.amount < fd.limit) && flag) {
+			orderMore(fd);
+			return true;
+		}
+		InventoryOrder temp = null;
+		synchronized (invords) {
 			for (InventoryOrder o : invords) {
 				if (o.status == InventoryStatus.Pending) {
-					requestMarket(o);
-					return true;
-				}
-				if (o.status == InventoryStatus.Received) {
-					addToInventory(o);
-					return true;
+					temp = o;
+					break;
 				}
 			}
-			//If there exists an order o whose status is done, place o.
+		}
+		if (temp != null) {
+			requestMarket(temp);
+			return true;
+		}
+
+		synchronized (invords) {
+			temp = null;
+			for (InventoryOrder o : invords) {
+				if (o.status == InventoryStatus.Received) {
+					temp = o;
+					break;
+				}
+			}
+		}
+		if (temp != null) {
+			addToInventory(temp);
+			return true;
+		}
+
+		//If there exists an order o whose status is done, place o.
+		synchronized (orders) {
+			order = null;
 			for(Order o:orders){
 				if(o.status == Status.done){
-					placeOrder(o);
-					return true;
+					order = o;
+					break;
 				}
 			}
-			//If there exists an order o whose status is pending, cook o.
+		}
+		if (order != null) {
+			placeOrder(order);
+			return true;
+		}
+
+		//If there exists an order o whose status is pending, cook o.
+		synchronized (orders) {
+			order = null;
 			for(final Order o:orders){
 				if(o.status == Status.pending){
-					if(waiting) {
-						print("Waiting 5000 milliseconds");
-						o.status = Status.waiting;
-						o.t.schedule(new TimerTask() {
-							public void run() {
-								cookOrder(o);
-							}
-						}, 5000);
-					}else
-						cookOrder(o);
-					return true;
+					order = o;
+					break;
 				}
 			}
-		}catch (ConcurrentModificationException e) {return true;}
+		}
+		if (order != null) {
+			final Order tempo = order;
+			if(waiting) {
+				print("Waiting 5000 milliseconds");
+				order.status = Status.waiting;
+				order.t.schedule(new TimerTask() {
+					public void run() {
+						cookOrder(tempo);
+					}
+				}, 5000);
+			}else
+				cookOrder(order);
+			return true;
+		}
 
 		//we have tried all our rules (in this case only one) and found
 		//nothing to do. So return false to main loop of abstract agent
@@ -399,12 +454,12 @@ public class CookAgent extends Agent implements Cook{
 		}
 		stateChanged();
 	}
-	
+
 	public void setShareData(ShareData sd) {
 		shareData = sd;
 		fo.start();
 	}
-	
+
 	private class FetchOrder extends Thread {
 		public void run() {
 			if (shareData != null) {
