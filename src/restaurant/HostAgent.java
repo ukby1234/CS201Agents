@@ -207,34 +207,35 @@ public class HostAgent extends Agent implements Host{
 			tellCustomerFull(t);
 			return true;
 		}
-		
-		if(!waitList.isEmpty() && !waiters.isEmpty() && !onBreak){
-			synchronized(waiters){
-				//Finds the next waiter that is working
-				while(!waiters.get(nextWaiter).working){
-					nextWaiter = (nextWaiter+1)%waiters.size();
-				}
-			}
-			print("picking waiter number:"+nextWaiter);
-			//Then runs through the tables and finds the first unoccupied 
-			//table and tells the waiter to sit the first customer at that table
-			for(int i=0; i < nTables; i++){
-				t = null;
-				if(!tables[i].occupied){
-					synchronized(waitList){
-						for (MyCustomer c : waitList)
-							if (c.state != CustomerState.Deciding) {
-								t = c;
-								break;
-							}
-					}
-					if (t != null) {
-						tellWaiterToSitCustomerAtTable(waiters.get(nextWaiter), t, i);
-						return true;	
+		try {
+			if(!waitList.isEmpty() && !waiters.isEmpty() && !onBreak){
+				synchronized(waiters){
+					//Finds the next waiter that is working
+					while(!waiters.get(nextWaiter).working){
+						nextWaiter = (nextWaiter+1)%waiters.size();
 					}
 				}
+				print("picking waiter number:"+nextWaiter);
+				//Then runs through the tables and finds the first unoccupied 
+				//table and tells the waiter to sit the first customer at that table
+				for(int i=0; i < nTables; i++){
+					t = null;
+					if(!tables[i].occupied){
+						synchronized(waitList){
+							for (MyCustomer c : waitList)
+								if (c.state != CustomerState.Deciding) {
+									t = c;
+									break;
+								}
+						}
+						if (t != null) {
+							tellWaiterToSitCustomerAtTable(waiters.get(nextWaiter), t, i);
+							return true;	
+						}
+					}
+				}
 			}
-		}
+		}catch (ConcurrentModificationException e) {return true;}
 		//we have tried all our rules (in this case only one) and found
 		//nothing to do. So return false to main loop of abstract agent
 		//and wait.
