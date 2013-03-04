@@ -209,11 +209,9 @@ public class HostAgent extends Agent implements Host{
 		}
 		try {
 			if(!waitList.isEmpty() && !waiters.isEmpty() && !onBreak){
-				synchronized(waiters){
-					//Finds the next waiter that is working
-					while(!waiters.get(nextWaiter).working){
-						nextWaiter = (nextWaiter+1)%waiters.size();
-					}
+				//Finds the next waiter that is working
+				while(!waiters.get(nextWaiter).working){
+					nextWaiter = (nextWaiter+1)%waiters.size();
 				}
 				print("picking waiter number:"+nextWaiter);
 				//Then runs through the tables and finds the first unoccupied 
